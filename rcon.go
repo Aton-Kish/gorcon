@@ -34,9 +34,9 @@ import (
 )
 
 const (
-	BadAuthRequestID         = -1
-	RequestPayloadMaxLength  = 1446
-	ResponsePayloadMaxLength = 4096
+	badAuthRequestID         = -1
+	requestPayloadMaxLength  = 1446
+	responsePayloadMaxLength = 4096
 )
 
 type Rcon struct {
@@ -74,7 +74,7 @@ func (c *Rcon) auth(password string) error {
 		return err
 	}
 
-	if res.RequestID != id || res.RequestID == BadAuthRequestID {
+	if res.RequestID != id || res.RequestID == badAuthRequestID {
 		return errors.New("bad auth")
 	}
 
@@ -85,8 +85,8 @@ func (c *Rcon) Command(command string) (string, error) {
 	id := rand.Int31()
 
 	p := []byte(command)
-	if len(p) > RequestPayloadMaxLength {
-		return "", fmt.Errorf("request payload is over %d", RequestPayloadMaxLength)
+	if len(p) > requestPayloadMaxLength {
+		return "", fmt.Errorf("request payload is over %d", requestPayloadMaxLength)
 	}
 
 	res, err := c.requestWithEndConfirmation(id, types.CommandRequest, p)
@@ -158,7 +158,7 @@ func (c *Rcon) requestWithEndConfirmation(id int32, typ types.Packet, payload []
 }
 
 func (c *Rcon) readPackets() ([]*packet.Packet, error) {
-	raw := make([]byte, 4+4+4+ResponsePayloadMaxLength+1+1)
+	raw := make([]byte, 4+4+4+responsePayloadMaxLength+1+1)
 
 	n, err := c.Read(raw)
 	if err != nil {

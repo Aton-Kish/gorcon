@@ -174,7 +174,7 @@ func TestRcon_auth(t *testing.T) {
 		{
 			name:      "Invalid Case: bad auth request id",
 			password:  "failure",
-			requestID: ptr.Int32(BadAuthRequestID),
+			requestID: ptr.Int32(badAuthRequestID),
 			hasError:  true,
 		},
 		{
@@ -638,7 +638,7 @@ func TestRcon_writePackets(t *testing.T) {
 				// server mock
 				defer srv.Close()
 
-				raw := make([]byte, 4+4+4+ResponsePayloadMaxLength+1+1)
+				raw := make([]byte, 4+4+4+responsePayloadMaxLength+1+1)
 
 				n, err := srv.Read(raw)
 				if err != nil {
