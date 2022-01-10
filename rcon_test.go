@@ -11,6 +11,7 @@ import (
 	"github.com/Aton-Kish/gorcon/types"
 	"github.com/caarlos0/env/v6"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/thriftrw/ptr"
 )
 
 var cfg = new(Config)
@@ -131,6 +132,77 @@ func TestDialTimeout(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				defer conn.Close()
+			}
+		})
+	}
+}
+
+func TestAuth(t *testing.T) {
+	cases := []struct {
+		name      string
+		password  string
+		requestID *int32
+		hasError  bool
+	}{
+		{
+			name:     "Valid Case: auth success",
+			password: "success",
+			hasError: false,
+		},
+		{
+			name:      "Invalid Case: bad auth request id",
+			password:  "failure",
+			requestID: ptr.Int32(BadAuthRequestID),
+			hasError:  true,
+		},
+		{
+			name:      "Invalid Case: mismatch request id",
+			password:  "failure",
+			requestID: ptr.Int32(-100),
+			hasError:  true,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			srv, clt := net.Pipe()
+			rsrv := Rcon{srv}
+			rclt := Rcon{clt}
+			defer rclt.Close()
+
+			errc := make(chan error, 2)
+			go func() {
+				// server mock
+				defer rsrv.Close()
+
+				pacs, err := rsrv.readPackets()
+				if err != nil {
+					errc <- err
+				}
+
+				res := &packet.Packet{Header: packet.Header{Length: 10, RequestID: pacs[0].RequestID, Type: types.AuthResponse}, Payload: []byte("")}
+				if c.requestID != nil {
+					res.RequestID = *c.requestID
+				}
+
+				if err := rsrv.writePackets(res); err != nil {
+					errc <- err
+				}
+
+				close(errc)
+			}()
+
+			err := rclt.auth(c.password)
+			if c.hasError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			for err := range errc {
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
 		})
 	}
