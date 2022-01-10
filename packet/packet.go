@@ -69,7 +69,7 @@ func Pack(raw []byte) (*Packet, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	p := make([]byte, h.Length-(4+4+2))
+	p := make([]byte, h.Length-(4+4+1+1))
 	if err := binary.Read(r, order, p); err != nil {
 		return nil, errors.WithStack(err)
 	}
