@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"regexp"
 
 	"github.com/Aton-Kish/gonbt"
@@ -23,24 +24,24 @@ type Config struct {
 func main() {
 	cfg := new(Config)
 	if err := env.Parse(cfg); err != nil {
-		panic(err)
+		log.Fatalf("%+v", err)
 	}
 
 	c, err := rcon.Dial(cfg.Addr, cfg.Password)
 	if err != nil {
-		panic(err)
+		log.Fatalf("%+v", err)
 	}
 	defer c.Close()
 
 	players, err := listCommand(&c)
 	if err != nil {
-		panic(err)
+		log.Fatalf("%+v", err)
 	}
 
 	for uuid, name := range players {
 		raw, err := dataCommand(&c, uuid)
 		if err != nil {
-			panic(err)
+			log.Fatalf("%+v", err)
 		}
 
 		fmt.Printf("Player: %s (%s)\n", name, uuid)
