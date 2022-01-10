@@ -1,3 +1,5 @@
+github.com/Aton-Kish/gonbt v0.0.1 h1:Zers0n1kguV0/H+Re04cerxLbWyuxyjNjVnuD7zoXIs=
+github.com/Aton-Kish/gonbt v0.0.1/go.mod h1:DpTiRoHjJ2QqYhLokcH6eGtU8jBmTi2YQSPLr7HOH2Q=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
 github.com/caarlos0/env/v6 v6.9.1 h1:zOkkjM0F6ltnQ5eBX6IPI41UP/KDGEK7rRPwGCNos8k=
