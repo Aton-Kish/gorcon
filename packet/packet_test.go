@@ -13,7 +13,7 @@ var packetTestCases = []struct {
 	packet Packet
 }{
 	{
-		name: "Valid Case: Auth",
+		name: "Valid Case: AuthRequest",
 		raw: []byte{
 			// Length: 14
 			0x0E, 0x00, 0x00, 0x00,
@@ -45,7 +45,7 @@ var packetTestCases = []struct {
 		packet: Packet{Header: Header{Length: 10, RequestID: 789012, Type: types.AuthResponse}, Payload: []byte("")},
 	},
 	{
-		name: "Valid Case: Command",
+		name: "Valid Case: CommandRequest",
 		raw: []byte{
 			// Length: 17
 			0x11, 0x00, 0x00, 0x00,

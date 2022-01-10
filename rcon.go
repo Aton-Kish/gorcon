@@ -134,7 +134,7 @@ func (c *Rcon) getMultipleResponse(id int32, typ types.Packet, payload []byte) (
 }
 
 func (c *Rcon) readPackets() ([]*packet.Packet, error) {
-	raw := make([]byte, 4+4+4+ResponsePayloadMaxLength+2)
+	raw := make([]byte, 4+4+4+ResponsePayloadMaxLength+1+1)
 
 	n, err := c.Read(raw)
 	if err != nil {
