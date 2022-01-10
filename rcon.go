@@ -47,7 +47,7 @@ func DialTimeout(addr string, password string, timeout time.Duration) (Rcon, err
 func (c *Rcon) auth(password string) error {
 	id := rand.Int31()
 	p := []byte(password)
-	res, err := c.getSingleResponse(id, types.AuthRequest, p)
+	res, err := c.request(id, types.AuthRequest, p)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (c *Rcon) Command(command string) (string, error) {
 		return "", fmt.Errorf("request payload is over %d", RequestPayloadMaxLength)
 	}
 
-	res, err := c.getMultipleResponse(id, types.CommandRequest, p)
+	res, err := c.requestWithEndConfirmation(id, types.CommandRequest, p)
 	if err != nil {
 		return "", err
 	}
@@ -75,7 +75,7 @@ func (c *Rcon) Command(command string) (string, error) {
 	return string(res.Payload), nil
 }
 
-func (c *Rcon) getSingleResponse(id int32, typ types.Packet, payload []byte) (*packet.Packet, error) {
+func (c *Rcon) request(id int32, typ types.Packet, payload []byte) (*packet.Packet, error) {
 	var res *packet.Packet
 
 	req := packet.NewPacket(id, typ, payload)
@@ -99,8 +99,8 @@ func (c *Rcon) getSingleResponse(id int32, typ types.Packet, payload []byte) (*p
 	return res, nil
 }
 
-func (c *Rcon) getMultipleResponse(id int32, typ types.Packet, payload []byte) (*packet.Packet, error) {
-	res, err := c.getSingleResponse(id, typ, payload)
+func (c *Rcon) requestWithEndConfirmation(id int32, typ types.Packet, payload []byte) (*packet.Packet, error) {
+	res, err := c.request(id, typ, payload)
 	if err != nil {
 		return nil, err
 	}
