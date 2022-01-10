@@ -92,6 +92,7 @@ func (c *Rcon) request(id int32, typ types.Packet, payload []byte) (*packet.Pack
 		if res == nil {
 			res = pac
 		} else {
+			res.Length += int32(len(pac.Payload))
 			res.Payload = append(res.Payload, pac.Payload...)
 		}
 	}
@@ -128,6 +129,7 @@ func (c *Rcon) requestWithEndConfirmation(id int32, typ types.Packet, payload []
 				return res, nil
 			}
 
+			res.Length += int32(len(pac.Payload))
 			res.Payload = append(res.Payload, pac.Payload...)
 		}
 	}
