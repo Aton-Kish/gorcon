@@ -78,6 +78,29 @@ func Pack(raw []byte) (*Packet, error) {
 	return &pac, nil
 }
 
+func ParseHeader(raw []byte) (*Header, error) {
+	r := bytes.NewReader(raw)
+
+	h := new(Header)
+	if err := binary.Read(r, order, h); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return h, nil
+}
+
+func PackWithHeader(raw []byte, header *Header) (*Packet, error) {
+	r := bytes.NewReader(raw)
+
+	p := make([]byte, header.Length-(4+4+1+1))
+	if err := binary.Read(r, order, p); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	pac := Packet{Header: *header, Payload: p}
+	return &pac, nil
+}
+
 func Unpack(pac *Packet) ([]byte, error) {
 	buf := new(bytes.Buffer)
 

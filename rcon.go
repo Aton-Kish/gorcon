@@ -183,27 +183,39 @@ func (c *Rcon) requestWithEndConfirmation(id int32, typ types.Packet, payload []
 }
 
 func (c *Rcon) readPackets() ([]*packet.Packet, error) {
-	raw := make([]byte, 4+4+4+responsePayloadMaxLength+1+1)
-
-	n, err := c.Read(raw)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	l := 0
-	pacs := make([]*packet.Packet, 0, 1)
-	for l < n {
-		pac, err := packet.Pack(raw[l:n])
+	hraw := make([]byte, 0, 4+4+4)
+	for len(hraw) < 4+4+4 {
+		buf := make([]byte, 4+4+4-len(hraw))
+		n, err := c.Read(buf)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 
-		pacs = append(pacs, pac)
-
-		l += 4 + int(pac.Length)
+		hraw = append(hraw, buf[:n]...)
 	}
 
-	return pacs, nil
+	h, err := packet.ParseHeader(hraw)
+	if err != nil {
+		return nil, err
+	}
+
+	praw := make([]byte, 0, h.Length-(4+4))
+	for len(praw) < int(h.Length)-(4+4) {
+		buf := make([]byte, int(h.Length)-(4+4+len(praw)))
+		n, err := c.Read(buf)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		praw = append(praw, buf[:n]...)
+	}
+
+	pac, err := packet.PackWithHeader(praw, h)
+	if err != nil {
+		return nil, err
+	}
+
+	return []*packet.Packet{pac}, nil
 }
 
 func (c *Rcon) writePackets(pacs ...*packet.Packet) error {
