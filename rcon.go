@@ -52,7 +52,7 @@ func (c *Rcon) auth(password string) error {
 		return err
 	}
 
-	if res.RequestID == BadAuthRequestID {
+	if res.RequestID != id || res.RequestID == BadAuthRequestID {
 		return errors.New("bad auth")
 	}
 
