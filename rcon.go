@@ -31,14 +31,14 @@ A simple RCON client for Minecraft:
 
 	c, err := rcon.Dial("localhost:25575", "password")
 	if err != nil {
-		panic(err)
+		log.Fatalf("%+v", err)
 	}
 	defer c.Close()
 
 	// Exec any commands
 	res, err := c.Command("/seed")
 	if err != nil {
-		panic(err)
+		log.Fatalf("%+v", err)
 	}
 
 	fmt.Println(res) // Seed: [...]
