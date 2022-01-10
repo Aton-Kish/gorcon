@@ -83,6 +83,7 @@ func DialTimeout(addr string, password string, timeout time.Duration) (Rcon, err
 
 	c := Rcon{conn}
 	if err := c.auth(password); err != nil {
+		defer c.Close()
 		return Rcon{}, err
 	}
 
