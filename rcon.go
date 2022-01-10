@@ -126,22 +126,13 @@ func (c *Rcon) request(id int32, typ types.Packet, payload []byte) (*packet.Pack
 	var res *packet.Packet
 
 	req := packet.NewPacket(id, typ, payload)
-	if err := c.writePackets(req); err != nil {
+	if err := c.writePacket(req); err != nil {
 		return nil, err
 	}
 
-	pacs, err := c.readPackets()
+	res, err := c.readPacket()
 	if err != nil {
 		return nil, err
-	}
-
-	for _, pac := range pacs {
-		if res == nil {
-			res = pac
-		} else {
-			res.Length += int32(len(pac.Payload))
-			res.Payload = append(res.Payload, pac.Payload...)
-		}
 	}
 
 	return res, nil
@@ -155,34 +146,34 @@ func (c *Rcon) requestWithEndConfirmation(id int32, typ types.Packet, payload []
 
 	// Dummy Request
 	req := packet.NewPacket(id, types.DummyRequest, []byte{})
-	if err := c.writePackets(req); err != nil {
+	if err := c.writePacket(req); err != nil {
 		return nil, err
 	}
 
 	for {
-		pacs, err := c.readPackets()
+		pac, err := c.readPacket()
 		if err != nil {
 			return nil, err
 		}
 
-		for _, pac := range pacs {
-			if pac.RequestID != id {
-				continue
-			}
-
-			body := string(pac.Payload)
-			if body == "Unknown request 64" {
-				// Termination
-				return res, nil
-			}
-
-			res.Length += int32(len(pac.Payload))
-			res.Payload = append(res.Payload, pac.Payload...)
+		if pac.RequestID != id {
+			continue
 		}
+
+		body := string(pac.Payload)
+		if body == "Unknown request 64" {
+			// Termination
+			break
+		}
+
+		res.Length += int32(len(pac.Payload))
+		res.Payload = append(res.Payload, pac.Payload...)
 	}
+
+	return res, nil
 }
 
-func (c *Rcon) readPackets() ([]*packet.Packet, error) {
+func (c *Rcon) readPacket() (*packet.Packet, error) {
 	hraw := make([]byte, 0, 4+4+4)
 	for len(hraw) < 4+4+4 {
 		buf := make([]byte, 4+4+4-len(hraw))
@@ -215,19 +206,17 @@ func (c *Rcon) readPackets() ([]*packet.Packet, error) {
 		return nil, err
 	}
 
-	return []*packet.Packet{pac}, nil
+	return pac, nil
 }
 
-func (c *Rcon) writePackets(pacs ...*packet.Packet) error {
-	for _, pac := range pacs {
-		raw, err := packet.Unpack(pac)
-		if err != nil {
-			return err
-		}
+func (c *Rcon) writePacket(pac *packet.Packet) error {
+	raw, err := packet.Unpack(pac)
+	if err != nil {
+		return err
+	}
 
-		if _, err := c.Write(raw); err != nil {
-			return errors.WithStack(err)
-		}
+	if _, err := c.Write(raw); err != nil {
+		return errors.WithStack(err)
 	}
 
 	return nil
