@@ -30,6 +30,7 @@ import (
 	"encoding/binary"
 
 	"github.com/Aton-Kish/gorcon/types"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -65,12 +66,12 @@ func Pack(raw []byte) (*Packet, error) {
 
 	h := new(Header)
 	if err := binary.Read(r, order, h); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	p := make([]byte, h.Length-(4+4+2))
 	if err := binary.Read(r, order, p); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	pac := Packet{Header: *h, Payload: p}
@@ -81,23 +82,23 @@ func Unpack(pac *Packet) ([]byte, error) {
 	buf := new(bytes.Buffer)
 
 	if err := binary.Write(buf, order, pac.Length); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	if err := binary.Write(buf, order, pac.RequestID); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	if err := binary.Write(buf, order, pac.Type); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	if err := binary.Write(buf, order, pac.Payload); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	if err := binary.Write(buf, order, [2]byte{}); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	return buf.Bytes(), nil

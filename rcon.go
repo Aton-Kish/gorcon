@@ -46,11 +46,11 @@ A simple RCON client for Minecraft:
 package rcon
 
 import (
-	"errors"
-	"fmt"
 	"math/rand"
 	"net"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/Aton-Kish/gorcon/packet"
 	"github.com/Aton-Kish/gorcon/types"
@@ -78,7 +78,7 @@ func Dial(addr string, password string) (Rcon, error) {
 func DialTimeout(addr string, password string, timeout time.Duration) (Rcon, error) {
 	conn, err := net.DialTimeout("tcp", addr, timeout)
 	if err != nil {
-		return Rcon{}, err
+		return Rcon{}, errors.WithStack(err)
 	}
 
 	c := Rcon{conn}
@@ -110,7 +110,7 @@ func (c *Rcon) Command(command string) (string, error) {
 
 	p := []byte(command)
 	if len(p) > requestPayloadMaxLength {
-		return "", fmt.Errorf("request payload is over %d", requestPayloadMaxLength)
+		return "", errors.Errorf("request payload is over %d", requestPayloadMaxLength)
 	}
 
 	res, err := c.requestWithEndConfirmation(id, types.CommandRequest, p)
@@ -186,7 +186,7 @@ func (c *Rcon) readPackets() ([]*packet.Packet, error) {
 
 	n, err := c.Read(raw)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	l := 0
@@ -213,7 +213,7 @@ func (c *Rcon) writePackets(pacs ...*packet.Packet) error {
 		}
 
 		if _, err := c.Write(raw); err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 	}
 
