@@ -23,6 +23,7 @@ SOFTWARE.
 package rcon
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"strings"
@@ -122,6 +123,16 @@ func TestDial(t *testing.T) {
 	}
 }
 
+func ExampleDial() {
+	addr := "minecraft:25575"
+	password := "minecraft"
+	c, err := Dial(addr, password)
+	if err != nil {
+		panic(err)
+	}
+	defer c.Close()
+}
+
 func TestDialTimeout(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -157,6 +168,16 @@ func TestDialTimeout(t *testing.T) {
 			}
 		})
 	}
+}
+
+func ExampleDialTimeout() {
+	addr := "minecraft:25575"
+	password := "minecraft"
+	c, err := DialTimeout(addr, password, time.Duration(500)*time.Millisecond)
+	if err != nil {
+		panic(err)
+	}
+	defer c.Close()
 }
 
 func TestRcon_auth(t *testing.T) {
@@ -266,6 +287,24 @@ func TestRcon_Command(t *testing.T) {
 			assert.Contains(t, res, c.contains)
 		})
 	}
+}
+
+func ExampleRcon_Command() {
+	addr := "minecraft:25575"
+	password := "minecraft"
+	c, err := Dial(addr, password)
+	if err != nil {
+		panic(err)
+	}
+	defer c.Close()
+
+	res, err := c.Command("/seed")
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(res[:5])
+	// Output: Seed:
 }
 
 func TestRcon_request(t *testing.T) {

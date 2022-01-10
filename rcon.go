@@ -20,6 +20,29 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+/*
+Package rcon extends net.Conn for RCON.
+
+
+Example
+
+
+A simple RCON client for Minecraft:
+
+	c, err := rcon.Dial("localhost:25575", "password")
+	if err != nil {
+		panic(err)
+	}
+	defer c.Close()
+
+	// Exec any commands
+	res, err := c.Command("/seed")
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(res) // Seed: [...]
+*/
 package rcon
 
 import (
@@ -81,6 +104,7 @@ func (c *Rcon) auth(password string) error {
 	return nil
 }
 
+// For details about commands, see the wiki https://minecraft.fandom.com/wiki/Commands.
 func (c *Rcon) Command(command string) (string, error) {
 	id := rand.Int31()
 

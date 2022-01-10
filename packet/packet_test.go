@@ -23,6 +23,7 @@ SOFTWARE.
 package packet
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/Aton-Kish/gorcon/types"
@@ -162,6 +163,30 @@ func TestNewPacket(t *testing.T) {
 	}
 }
 
+func ExampleNewPacket_auth() {
+	// id := rand.Int31()
+	id := int32(123456)
+	payload := []byte("password")
+	pac := NewPacket(id, types.AuthRequest, payload)
+
+	// &Packet{Header: Header{Length: 18, RequestID: 123456, Type: types.AuthRequest}, Payload: []byte("password")}
+
+	fmt.Printf("%#v\n", pac)
+	// Output: &packet.Packet{Header:packet.Header{Length:18, RequestID:123456, Type:3}, Payload:[]uint8{0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64}}
+}
+
+func ExampleNewPacket_command() {
+	// id := rand.Int31()
+	id := int32(789012)
+	payload := []byte("/seed")
+	pac := NewPacket(id, types.CommandRequest, payload)
+
+	// &Packet{Header: Header{Length: 15, RequestID: 789012, Type: types.CommandRequest}, Payload: []byte("/seed")}
+
+	fmt.Printf("%#v\n", pac)
+	// Output: &packet.Packet{Header:packet.Header{Length:15, RequestID:789012, Type:2}, Payload:[]uint8{0x2f, 0x73, 0x65, 0x65, 0x64}}
+}
+
 func TestPack(t *testing.T) {
 	type testCase struct {
 		name string
@@ -189,6 +214,31 @@ func TestPack(t *testing.T) {
 	}
 }
 
+func ExamplePack() {
+	raw := []byte{
+		// Length: 14
+		0x0E, 0x00, 0x00, 0x00,
+		// RequestId: 123456
+		0x40, 0xE2, 0x01, 0x00,
+		// Type: AuthRequest (=3)
+		0x03, 0x00, 0x00, 0x00,
+		// Payload (NULL-terminated): "auth"
+		0x61, 0x75, 0x74, 0x68, 0x00,
+		// 1-byte Pad
+		0x00,
+	}
+
+	pac, err := Pack(raw)
+	if err != nil {
+		panic(err)
+	}
+
+	// &Packet{Header: Header{Length: 14, RequestID: 123456, Type: types.AuthRequest}, Payload: []byte("auth")}
+
+	fmt.Printf("%#v\n", pac)
+	// Output: &packet.Packet{Header:packet.Header{Length:14, RequestID:123456, Type:3}, Payload:[]uint8{0x61, 0x75, 0x74, 0x68}}
+}
+
 func TestUnpack(t *testing.T) {
 	type testCase struct {
 		name   string
@@ -214,4 +264,29 @@ func TestUnpack(t *testing.T) {
 			assert.Equal(t, c.want, raw)
 		})
 	}
+}
+
+func ExampleUnpack() {
+	pac := &Packet{Header: Header{Length: 14, RequestID: 123456, Type: types.AuthRequest}, Payload: []byte("auth")}
+
+	raw, err := Unpack(pac)
+	if err != nil {
+		panic(err)
+	}
+
+	// []byte{
+	// 	// Length: 14
+	// 	0x0E, 0x00, 0x00, 0x00,
+	// 	// RequestId: 123456
+	// 	0x40, 0xE2, 0x01, 0x00,
+	// 	// Type: AuthRequest (=3)
+	// 	0x03, 0x00, 0x00, 0x00,
+	// 	// Payload (NULL-terminated): "auth"
+	// 	0x61, 0x75, 0x74, 0x68, 0x00,
+	// 	// 1-byte Pad
+	// 	0x00,
+	// }
+
+	fmt.Printf("%#v\n", raw)
+	// Output: []byte{0xe, 0x0, 0x0, 0x0, 0x40, 0xe2, 0x1, 0x0, 0x3, 0x0, 0x0, 0x0, 0x61, 0x75, 0x74, 0x68, 0x0, 0x0}
 }
