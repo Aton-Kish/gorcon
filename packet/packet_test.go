@@ -239,6 +239,103 @@ func ExamplePack() {
 	// Output: &packet.Packet{Header:packet.Header{Length:14, RequestID:123456, Type:3}, Payload:[]uint8{0x61, 0x75, 0x74, 0x68}}
 }
 
+func TestParseHeader(t *testing.T) {
+	type testCase struct {
+		name string
+		raw  []byte
+		want Header
+	}
+
+	cases := make([]testCase, 0, len(packetTestCases))
+
+	for _, v := range packetTestCases {
+		c := testCase{
+			name: v.name,
+			raw:  v.raw[:12],
+			want: v.packet.Header,
+		}
+		cases = append(cases, c)
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			h, err := ParseHeader(c.raw)
+			assert.NoError(t, err)
+			assert.Equal(t, c.want, *h)
+		})
+	}
+}
+
+func ExampleParseHeader() {
+	raw := []byte{
+		// Length: 14
+		0x0E, 0x00, 0x00, 0x00,
+		// RequestId: 123456
+		0x40, 0xE2, 0x01, 0x00,
+		// Type: AuthRequest (=3)
+		0x03, 0x00, 0x00, 0x00,
+	}
+
+	h, err := ParseHeader(raw)
+	if err != nil {
+		panic(err)
+	}
+
+	// &Header{Length: 14, RequestID: 123456, Type: types.AuthRequest}
+
+	fmt.Printf("%#v\n", h)
+	// Output: &packet.Header{Length:14, RequestID:123456, Type:3}
+}
+
+func TestPackWithHeader(t *testing.T) {
+	type testCase struct {
+		name   string
+		raw    []byte
+		header Header
+		want   Packet
+	}
+
+	cases := make([]testCase, 0, len(packetTestCases))
+
+	for _, v := range packetTestCases {
+		c := testCase{
+			name:   v.name,
+			raw:    v.raw[12:],
+			header: v.packet.Header,
+			want:   v.packet,
+		}
+		cases = append(cases, c)
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			pac, err := PackWithHeader(c.raw, &c.header)
+			assert.NoError(t, err)
+			assert.Equal(t, c.want, *pac)
+		})
+	}
+}
+
+func ExamplePackWithHeader() {
+	h := &Header{Length: 14, RequestID: 123456, Type: types.AuthRequest}
+	raw := []byte{
+		// Payload (NULL-terminated): "auth"
+		0x61, 0x75, 0x74, 0x68, 0x00,
+		// 1-byte Pad
+		0x00,
+	}
+
+	pac, err := PackWithHeader(raw, h)
+	if err != nil {
+		panic(err)
+	}
+
+	// &Packet{Header: Header{Length: 14, RequestID: 123456, Type: types.AuthRequest}, Payload: []byte("auth")}
+
+	fmt.Printf("%#v\n", pac)
+	// Output: &packet.Packet{Header:packet.Header{Length:14, RequestID:123456, Type:3}, Payload:[]uint8{0x61, 0x75, 0x74, 0x68}}
+}
+
 func TestUnpack(t *testing.T) {
 	type testCase struct {
 		name   string
