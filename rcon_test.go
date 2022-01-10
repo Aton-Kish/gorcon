@@ -137,7 +137,7 @@ func TestDialTimeout(t *testing.T) {
 	}
 }
 
-func TestAuth(t *testing.T) {
+func TestRcon_auth(t *testing.T) {
 	cases := []struct {
 		name      string
 		password  string
@@ -208,7 +208,7 @@ func TestAuth(t *testing.T) {
 	}
 }
 
-func TestCommand(t *testing.T) {
+func TestRcon_Command(t *testing.T) {
 	conn, err := Dial(cfg.Addr, cfg.Password)
 	if err != nil {
 		t.Fatal(err)
@@ -246,7 +246,7 @@ func TestCommand(t *testing.T) {
 	}
 }
 
-func TestRequest(t *testing.T) {
+func TestRcon_request(t *testing.T) {
 	cases := []struct {
 		name      string
 		id        int32
@@ -303,7 +303,7 @@ func TestRequest(t *testing.T) {
 	}
 }
 
-func TestRequestWithEndConfirmation(t *testing.T) {
+func TestRcon_requestWithEndConfirmation(t *testing.T) {
 	cases := []struct {
 		name      string
 		id        int32
@@ -403,7 +403,7 @@ func TestRequestWithEndConfirmation(t *testing.T) {
 	}
 }
 
-func TestReadPackets(t *testing.T) {
+func TestRcon_readPackets(t *testing.T) {
 	cases := []struct {
 		name     string
 		raw      []byte
@@ -542,7 +542,7 @@ func TestReadPackets(t *testing.T) {
 	}
 }
 
-func TestWritePackets(t *testing.T) {
+func TestRcon_writePackets(t *testing.T) {
 	cases := []struct {
 		name    string
 		packets []*packet.Packet
