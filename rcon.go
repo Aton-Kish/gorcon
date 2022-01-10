@@ -31,14 +31,14 @@ A simple RCON client for Minecraft:
 
 	c, err := rcon.Dial("localhost:25575", "password")
 	if err != nil {
-		panic(err)
+		log.Fatalf("%+v", err)
 	}
 	defer c.Close()
 
 	// Exec any commands
 	res, err := c.Command("/seed")
 	if err != nil {
-		panic(err)
+		log.Fatalf("%+v", err)
 	}
 
 	fmt.Println(res) // Seed: [...]
@@ -46,11 +46,11 @@ A simple RCON client for Minecraft:
 package rcon
 
 import (
-	"errors"
-	"fmt"
 	"math/rand"
 	"net"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/Aton-Kish/gorcon/packet"
 	"github.com/Aton-Kish/gorcon/types"
@@ -78,11 +78,12 @@ func Dial(addr string, password string) (Rcon, error) {
 func DialTimeout(addr string, password string, timeout time.Duration) (Rcon, error) {
 	conn, err := net.DialTimeout("tcp", addr, timeout)
 	if err != nil {
-		return Rcon{}, err
+		return Rcon{}, errors.WithStack(err)
 	}
 
 	c := Rcon{conn}
 	if err := c.auth(password); err != nil {
+		defer c.Close()
 		return Rcon{}, err
 	}
 
@@ -110,7 +111,7 @@ func (c *Rcon) Command(command string) (string, error) {
 
 	p := []byte(command)
 	if len(p) > requestPayloadMaxLength {
-		return "", fmt.Errorf("request payload is over %d", requestPayloadMaxLength)
+		return "", errors.Errorf("request payload is over %d", requestPayloadMaxLength)
 	}
 
 	res, err := c.requestWithEndConfirmation(id, types.CommandRequest, p)
@@ -125,22 +126,13 @@ func (c *Rcon) request(id int32, typ types.Packet, payload []byte) (*packet.Pack
 	var res *packet.Packet
 
 	req := packet.NewPacket(id, typ, payload)
-	if err := c.writePackets(req); err != nil {
+	if err := c.writePacket(req); err != nil {
 		return nil, err
 	}
 
-	pacs, err := c.readPackets()
+	res, err := c.readPacket()
 	if err != nil {
 		return nil, err
-	}
-
-	for _, pac := range pacs {
-		if res == nil {
-			res = pac
-		} else {
-			res.Length += int32(len(pac.Payload))
-			res.Payload = append(res.Payload, pac.Payload...)
-		}
 	}
 
 	return res, nil
@@ -154,67 +146,77 @@ func (c *Rcon) requestWithEndConfirmation(id int32, typ types.Packet, payload []
 
 	// Dummy Request
 	req := packet.NewPacket(id, types.DummyRequest, []byte{})
-	if err := c.writePackets(req); err != nil {
+	if err := c.writePacket(req); err != nil {
 		return nil, err
 	}
 
 	for {
-		pacs, err := c.readPackets()
+		pac, err := c.readPacket()
 		if err != nil {
 			return nil, err
 		}
 
-		for _, pac := range pacs {
-			if pac.RequestID != id {
-				continue
-			}
-
-			body := string(pac.Payload)
-			if body == "Unknown request 64" {
-				// Termination
-				return res, nil
-			}
-
-			res.Length += int32(len(pac.Payload))
-			res.Payload = append(res.Payload, pac.Payload...)
+		if pac.RequestID != id {
+			continue
 		}
+
+		body := string(pac.Payload)
+		if body == "Unknown request 64" {
+			// Termination
+			break
+		}
+
+		res.Length += int32(len(pac.Payload))
+		res.Payload = append(res.Payload, pac.Payload...)
 	}
+
+	return res, nil
 }
 
-func (c *Rcon) readPackets() ([]*packet.Packet, error) {
-	raw := make([]byte, 4+4+4+responsePayloadMaxLength+1+1)
+func (c *Rcon) readPacket() (*packet.Packet, error) {
+	hraw := make([]byte, 0, 4+4+4)
+	for len(hraw) < 4+4+4 {
+		buf := make([]byte, 4+4+4-len(hraw))
+		n, err := c.Read(buf)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
 
-	n, err := c.Read(raw)
+		hraw = append(hraw, buf[:n]...)
+	}
+
+	h, err := packet.ParseHeader(hraw)
 	if err != nil {
 		return nil, err
 	}
 
-	l := 0
-	pacs := make([]*packet.Packet, 0, 1)
-	for l < n {
-		pac, err := packet.Pack(raw[l:n])
+	praw := make([]byte, 0, h.Length-(4+4))
+	for len(praw) < int(h.Length)-(4+4) {
+		buf := make([]byte, int(h.Length)-(4+4+len(praw)))
+		n, err := c.Read(buf)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 
-		pacs = append(pacs, pac)
-
-		l += 4 + int(pac.Length)
+		praw = append(praw, buf[:n]...)
 	}
 
-	return pacs, nil
+	pac, err := packet.PackWithHeader(praw, h)
+	if err != nil {
+		return nil, err
+	}
+
+	return pac, nil
 }
 
-func (c *Rcon) writePackets(pacs ...*packet.Packet) error {
-	for _, pac := range pacs {
-		raw, err := packet.Unpack(pac)
-		if err != nil {
-			return err
-		}
+func (c *Rcon) writePacket(pac *packet.Packet) error {
+	raw, err := packet.Unpack(pac)
+	if err != nil {
+		return err
+	}
 
-		if _, err := c.Write(raw); err != nil {
-			return err
-		}
+	if _, err := c.Write(raw); err != nil {
+		return errors.WithStack(err)
 	}
 
 	return nil

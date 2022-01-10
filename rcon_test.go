@@ -218,17 +218,17 @@ func TestRcon_auth(t *testing.T) {
 				// server mock
 				defer rsrv.Close()
 
-				pacs, err := rsrv.readPackets()
+				pac, err := rsrv.readPacket()
 				if err != nil {
 					errc <- err
 				}
 
-				res := &packet.Packet{Header: packet.Header{Length: 10, RequestID: pacs[0].RequestID, Type: types.AuthResponse}, Payload: []byte("")}
+				res := &packet.Packet{Header: packet.Header{Length: 10, RequestID: pac.RequestID, Type: types.AuthResponse}, Payload: []byte("")}
 				if c.requestID != nil {
 					res.RequestID = *c.requestID
 				}
 
-				if err := rsrv.writePackets(res); err != nil {
+				if err := rsrv.writePacket(res); err != nil {
 					errc <- err
 				}
 
@@ -335,17 +335,19 @@ func TestRcon_request(t *testing.T) {
 			rclt := Rcon{clt}
 			defer rclt.Close()
 
-			errc := make(chan error, 2)
+			errc := make(chan error, len(c.responses)+1)
 			go func() {
 				// server mock
 				defer rsrv.Close()
 
-				if _, err := rsrv.readPackets(); err != nil {
+				if _, err := rsrv.readPacket(); err != nil {
 					errc <- err
 				}
 
-				if err := rsrv.writePackets(c.responses...); err != nil {
-					errc <- err
+				for _, res := range c.responses {
+					if err := rsrv.writePacket(res); err != nil {
+						errc <- err
+					}
 				}
 
 				close(errc)
@@ -431,20 +433,27 @@ func TestRcon_requestWithEndConfirmation(t *testing.T) {
 			rclt := Rcon{clt}
 			defer rclt.Close()
 
-			errc := make(chan error, len(c.responses)+2)
+			paclen := 0
+			for _, pacs := range c.responses {
+				paclen += len(pacs)
+			}
+
+			errc := make(chan error, paclen+2)
 			go func() {
 				// server mock
 				defer rsrv.Close()
 
 				for i, pacs := range c.responses {
 					if i < 2 {
-						if _, err := rsrv.readPackets(); err != nil {
+						if _, err := rsrv.readPacket(); err != nil {
 							errc <- err
 						}
 					}
 
-					if err := rsrv.writePackets(pacs...); err != nil {
-						errc <- err
+					for _, res := range pacs {
+						if err := rsrv.writePacket(res); err != nil {
+							errc <- err
+						}
 					}
 				}
 
@@ -464,11 +473,11 @@ func TestRcon_requestWithEndConfirmation(t *testing.T) {
 	}
 }
 
-func TestRcon_readPackets(t *testing.T) {
+func TestRcon_readPacket(t *testing.T) {
 	cases := []struct {
 		name     string
 		raw      []byte
-		want     []*packet.Packet
+		want     *packet.Packet
 		hasError bool
 	}{
 		{
@@ -485,9 +494,7 @@ func TestRcon_readPackets(t *testing.T) {
 				// 1-byte Pad
 				0x00,
 			},
-			want: []*packet.Packet{
-				{Header: packet.Header{Length: 10, RequestID: 789012, Type: types.AuthResponse}, Payload: []byte("")},
-			},
+			want:     &packet.Packet{Header: packet.Header{Length: 10, RequestID: 789012, Type: types.AuthResponse}, Payload: []byte("")},
 			hasError: false,
 		},
 		{
@@ -504,9 +511,7 @@ func TestRcon_readPackets(t *testing.T) {
 				// 1-byte Pad
 				0x00,
 			},
-			want: []*packet.Packet{
-				{Header: packet.Header{Length: 18, RequestID: 901234, Type: types.CommandResponse}, Payload: []byte("response")},
-			},
+			want:     &packet.Packet{Header: packet.Header{Length: 18, RequestID: 901234, Type: types.CommandResponse}, Payload: []byte("response")},
 			hasError: false,
 		},
 		{
@@ -523,40 +528,7 @@ func TestRcon_readPackets(t *testing.T) {
 				// 1-byte Pad
 				0x00,
 			},
-			want: []*packet.Packet{
-				{Header: packet.Header{Length: 28, RequestID: 123456, Type: types.CommandResponse}, Payload: []byte("Unknown request 64")},
-			},
-			hasError: false,
-		},
-		{
-			name: "Valid Case: CommandResponse + UnknownResponse",
-			raw: []byte{
-				// Length: 18
-				0x12, 0x00, 0x00, 0x00,
-				// RequestId: 901234
-				0x72, 0xC0, 0x0D, 0x00,
-				// Type: CommandResponse (=0)
-				0x00, 0x00, 0x00, 0x00,
-				// Payload (NULL-terminated): "response"
-				0x72, 0x65, 0x73, 0x70, 0x6F, 0x6E, 0x73, 0x65, 0x00,
-				// 1-byte Pad
-				0x00,
-
-				// Length: 28
-				0x1C, 0x00, 0x00, 0x00,
-				// RequestId: 123456
-				0x40, 0xE2, 0x01, 0x00,
-				// Type: CommandResponse (=0)
-				0x00, 0x00, 0x00, 0x00,
-				// Payload (NULL-terminated): "Unknown request 64"
-				0x55, 0x6E, 0x6B, 0x6E, 0x6F, 0x77, 0x6E, 0x20, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x20, 0x36, 0x34, 0x00,
-				// 1-byte Pad
-				0x00,
-			},
-			want: []*packet.Packet{
-				{Header: packet.Header{Length: 18, RequestID: 901234, Type: types.CommandResponse}, Payload: []byte("response")},
-				{Header: packet.Header{Length: 28, RequestID: 123456, Type: types.CommandResponse}, Payload: []byte("Unknown request 64")},
-			},
+			want:     &packet.Packet{Header: packet.Header{Length: 28, RequestID: 123456, Type: types.CommandResponse}, Payload: []byte("Unknown request 64")},
 			hasError: false,
 		},
 		{
@@ -587,14 +559,14 @@ func TestRcon_readPackets(t *testing.T) {
 				close(errc)
 			}()
 
-			pacs, err := rclt.readPackets()
+			pac, err := rclt.readPacket()
 			if c.hasError {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
 			}
 
-			assert.EqualValues(t, c.want, pacs)
+			assert.EqualValues(t, c.want, pac)
 
 			if err := <-errc; err != nil {
 				t.Fatal(err)
@@ -603,17 +575,15 @@ func TestRcon_readPackets(t *testing.T) {
 	}
 }
 
-func TestRcon_writePackets(t *testing.T) {
+func TestRcon_writePacket(t *testing.T) {
 	cases := []struct {
-		name    string
-		packets []*packet.Packet
-		want    []byte
+		name   string
+		packet *packet.Packet
+		want   []byte
 	}{
 		{
-			name: "Valid Case: AuthRequest",
-			packets: []*packet.Packet{
-				{Header: packet.Header{Length: 14, RequestID: 123456, Type: types.AuthRequest}, Payload: []byte("auth")},
-			},
+			name:   "Valid Case: AuthRequest",
+			packet: &packet.Packet{Header: packet.Header{Length: 14, RequestID: 123456, Type: types.AuthRequest}, Payload: []byte("auth")},
 			want: []byte{
 				// Length: 14
 				0x0E, 0x00, 0x00, 0x00,
@@ -628,10 +598,8 @@ func TestRcon_writePackets(t *testing.T) {
 			},
 		},
 		{
-			name: "Valid Case: CommandRequest",
-			packets: []*packet.Packet{
-				{Header: packet.Header{Length: 17, RequestID: 345678, Type: types.CommandRequest}, Payload: []byte("command")},
-			},
+			name:   "Valid Case: CommandRequest",
+			packet: &packet.Packet{Header: packet.Header{Length: 17, RequestID: 345678, Type: types.CommandRequest}, Payload: []byte("command")},
 			want: []byte{
 				// Length: 17
 				0x11, 0x00, 0x00, 0x00,
@@ -646,10 +614,8 @@ func TestRcon_writePackets(t *testing.T) {
 			},
 		},
 		{
-			name: "Valid Case: DummyRequest",
-			packets: []*packet.Packet{
-				{Header: packet.Header{Length: 23, RequestID: 567890, Type: types.DummyRequest}, Payload: []byte("dummy request")},
-			},
+			name:   "Valid Case: DummyRequest",
+			packet: &packet.Packet{Header: packet.Header{Length: 23, RequestID: 567890, Type: types.DummyRequest}, Payload: []byte("dummy request")},
 			want: []byte{
 				// Length: 23
 				0x17, 0x00, 0x00, 0x00,
@@ -689,7 +655,7 @@ func TestRcon_writePackets(t *testing.T) {
 				close(rawc)
 			}()
 
-			err := rclt.writePackets(c.packets...)
+			err := rclt.writePacket(c.packet)
 			assert.NoError(t, err)
 
 			if err := <-errc; err != nil {
