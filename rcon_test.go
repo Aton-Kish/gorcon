@@ -174,6 +174,163 @@ func TestCommand(t *testing.T) {
 	}
 }
 
+func TestRequest(t *testing.T) {
+	cases := []struct {
+		name      string
+		id        int32
+		typ       types.Packet
+		payload   []byte
+		responses []*packet.Packet
+		want      *packet.Packet
+	}{
+		{
+			name:    "Valid Case: AuthRequest",
+			id:      123456,
+			typ:     types.AuthRequest,
+			payload: []byte("password"),
+			responses: []*packet.Packet{
+				{Header: packet.Header{Length: 10, RequestID: 123456, Type: types.AuthResponse}, Payload: []byte("")},
+			},
+			want: &packet.Packet{Header: packet.Header{Length: 10, RequestID: 123456, Type: types.AuthResponse}, Payload: []byte("")},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			srv, clt := net.Pipe()
+			rsrv := Rcon{srv}
+			rclt := Rcon{clt}
+			defer rclt.Close()
+
+			errc := make(chan error, 2)
+			go func() {
+				// server mock
+				defer rsrv.Close()
+
+				if _, err := rsrv.readPackets(); err != nil {
+					errc <- err
+				}
+
+				if err := rsrv.writePackets(c.responses...); err != nil {
+					errc <- err
+				}
+
+				close(errc)
+			}()
+
+			res, err := rclt.request(c.id, c.typ, c.payload)
+			assert.NoError(t, err)
+			assert.EqualValues(t, c.want, res)
+
+			for err := range errc {
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func TestRequestWithEndConfirmation(t *testing.T) {
+	cases := []struct {
+		name      string
+		id        int32
+		typ       types.Packet
+		payload   []byte
+		responses [][]*packet.Packet
+		want      *packet.Packet
+	}{
+		{
+			name:    "Valid Case: CommandRequest",
+			id:      345678,
+			typ:     types.CommandRequest,
+			payload: []byte("request"),
+			responses: [][]*packet.Packet{
+				{
+					{Header: packet.Header{Length: 18, RequestID: 345678, Type: types.CommandResponse}, Payload: []byte("response")},
+				},
+				{
+					{Header: packet.Header{Length: 28, RequestID: 345678, Type: types.CommandResponse}, Payload: []byte("Unknown request 64")},
+				},
+			},
+			want: &packet.Packet{Header: packet.Header{Length: 18, RequestID: 345678, Type: types.CommandResponse}, Payload: []byte("response")},
+		},
+		{
+			name:    "Valid Case: fragment responses",
+			id:      345678,
+			typ:     types.CommandRequest,
+			payload: []byte("request"),
+			responses: [][]*packet.Packet{
+				{
+					{Header: packet.Header{Length: 19, RequestID: 345678, Type: types.CommandResponse}, Payload: []byte("fragment ")},
+				},
+				{
+					{Header: packet.Header{Length: 19, RequestID: 345678, Type: types.CommandResponse}, Payload: []byte("responses")},
+				},
+				{
+					{Header: packet.Header{Length: 28, RequestID: 345678, Type: types.CommandResponse}, Payload: []byte("Unknown request 64")},
+				},
+			},
+			want: &packet.Packet{Header: packet.Header{Length: 28, RequestID: 345678, Type: types.CommandResponse}, Payload: []byte("fragment responses")},
+		},
+		{
+			name:    "Valid Case: merged responses",
+			id:      345678,
+			typ:     types.CommandRequest,
+			payload: []byte("request"),
+			responses: [][]*packet.Packet{
+				{
+					{Header: packet.Header{Length: 19, RequestID: 345678, Type: types.CommandResponse}, Payload: []byte("fragment ")},
+				},
+				{
+					{Header: packet.Header{Length: 19, RequestID: 345678, Type: types.CommandResponse}, Payload: []byte("responses")},
+					{Header: packet.Header{Length: 28, RequestID: 345678, Type: types.CommandResponse}, Payload: []byte("Unknown request 64")},
+				},
+			},
+			want: &packet.Packet{Header: packet.Header{Length: 28, RequestID: 345678, Type: types.CommandResponse}, Payload: []byte("fragment responses")},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			srv, clt := net.Pipe()
+			rsrv := Rcon{srv}
+			rclt := Rcon{clt}
+			defer rclt.Close()
+
+			errc := make(chan error, len(c.responses)+2)
+			go func() {
+				// server mock
+				defer rsrv.Close()
+
+				for i, pacs := range c.responses {
+					if i < 2 {
+						if _, err := rsrv.readPackets(); err != nil {
+							errc <- err
+						}
+					}
+
+					if err := rsrv.writePackets(pacs...); err != nil {
+						errc <- err
+					}
+				}
+
+				close(errc)
+			}()
+
+			res, err := rclt.requestWithEndConfirmation(c.id, c.typ, c.payload)
+			assert.NoError(t, err)
+			assert.EqualValues(t, c.want, res)
+
+			for err := range errc {
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func TestReadPackets(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -282,8 +439,8 @@ func TestReadPackets(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			srv, clt := net.Pipe()
-			conn := Rcon{clt}
-			defer conn.Close()
+			rclt := Rcon{clt}
+			defer rclt.Close()
 
 			errc := make(chan error)
 			go func() {
@@ -297,7 +454,7 @@ func TestReadPackets(t *testing.T) {
 				close(errc)
 			}()
 
-			pacs, err := conn.readPackets()
+			pacs, err := rclt.readPackets()
 			if c.hasError {
 				assert.Error(t, err)
 			} else {
@@ -378,8 +535,8 @@ func TestWritePackets(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			srv, clt := net.Pipe()
-			conn := Rcon{clt}
-			defer conn.Close()
+			rclt := Rcon{clt}
+			defer rclt.Close()
 
 			errc := make(chan error)
 			rawc := make(chan []byte)
@@ -399,7 +556,7 @@ func TestWritePackets(t *testing.T) {
 				close(rawc)
 			}()
 
-			err := conn.writePackets(c.packets...)
+			err := rclt.writePackets(c.packets...)
 			assert.NoError(t, err)
 
 			if err := <-errc; err != nil {
