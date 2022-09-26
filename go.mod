@@ -1,6 +1,6 @@
 module github.com/Aton-Kish/gorcon
 
-go 1.17
+go 1.19
 
 require (
 	github.com/Aton-Kish/gonbt v0.0.1
