@@ -15,4 +15,4 @@
 # vendor/
 
 # Minecraft directory
-.devcontainer/minecraft/data
+/server/data
