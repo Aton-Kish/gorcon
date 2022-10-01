@@ -22,6 +22,7 @@ package rcon
 
 import (
 	"bytes"
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -252,6 +253,121 @@ func Test_packet_decode(t *testing.T) {
 			} else {
 				assert.Error(t, err)
 				assert.Equal(t, tt.expectedErr, err)
+			}
+		})
+	}
+}
+
+func Test_packet_send(t *testing.T) {
+	type Case struct {
+		name      string
+		packet    *packet
+		clientErr error
+		serverErr error
+	}
+
+	cases := []Case{}
+
+	for _, c := range packetCases {
+		cases = append(cases, Case{
+			name:   c.name,
+			packet: c.packet,
+		})
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			srv, clt := net.Pipe()
+			defer clt.Close()
+
+			srvErr := make(chan error, 1)
+			srvPacket := make(chan *packet, 1)
+			go func() {
+				defer srv.Close()
+
+				packet := new(packet)
+				// NOTE: receive packet
+				if err := packet.decode(srv); err != nil {
+					srvErr <- err
+					srvPacket <- nil
+					return
+				}
+
+				srvErr <- nil
+				srvPacket <- packet
+			}()
+
+			// NOTE: send packet
+			cltErr := tt.packet.encode(clt)
+
+			if tt.clientErr == nil {
+				assert.NoError(t, cltErr)
+			} else {
+				assert.Error(t, cltErr)
+				assert.Equal(t, tt.clientErr, cltErr)
+			}
+
+			if tt.serverErr == nil {
+				assert.NoError(t, <-srvErr)
+				assert.Equal(t, tt.packet, <-srvPacket)
+			} else {
+				assert.Error(t, <-srvErr)
+			}
+		})
+	}
+}
+
+func Test_packet_receive(t *testing.T) {
+	type Case struct {
+		name      string
+		packet    *packet
+		clientErr error
+		serverErr error
+	}
+
+	cases := []Case{}
+
+	for _, c := range packetCases {
+		cases = append(cases, Case{
+			name:   c.name,
+			packet: c.packet,
+		})
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			srv, clt := net.Pipe()
+			defer clt.Close()
+
+			srvErr := make(chan error, 1)
+			go func() {
+				defer srv.Close()
+
+				// NOTE: send packet
+				if err := tt.packet.encode(srv); err != nil {
+					srvErr <- err
+					return
+				}
+
+				srvErr <- nil
+			}()
+
+			// NOTE: receive packet
+			cltPacket := new(packet)
+			cltErr := cltPacket.decode(clt)
+
+			if tt.clientErr == nil {
+				assert.NoError(t, cltErr)
+			} else {
+				assert.Error(t, cltErr)
+				assert.Equal(t, tt.clientErr, cltErr)
+			}
+
+			if tt.serverErr == nil {
+				assert.NoError(t, <-srvErr)
+				assert.Equal(t, tt.packet, cltPacket)
+			} else {
+				assert.Error(t, <-srvErr)
 			}
 		})
 	}
