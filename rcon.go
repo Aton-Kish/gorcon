@@ -67,6 +67,11 @@ func DialTimeout(addr string, password string, timeout time.Duration) (Rcon, err
 	return c, nil
 }
 
+func pipe() (Rcon, Rcon) {
+	srv, clt := net.Pipe()
+	return &rcon{srv}, &rcon{clt}
+}
+
 func (c *rcon) auth(password string) error {
 	id := rand.Int31()
 	res, err := c.request(id, authRequestType, []byte(password))

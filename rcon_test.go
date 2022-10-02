@@ -36,29 +36,6 @@ const (
 	mockTimeout  = 100 * time.Millisecond
 )
 
-func mockServer(address string, timeout time.Duration) (net.Listener, error) {
-	addr, err := net.ResolveTCPAddr("tcp", address)
-	if err != nil {
-		return nil, err
-	}
-
-	l, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := l.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return nil, err
-	}
-
-	return l, nil
-}
-
-func pipe() (Rcon, Rcon) {
-	srv, clt := net.Pipe()
-	return &rcon{srv}, &rcon{clt}
-}
-
 func TestDialTimeout(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -103,12 +80,23 @@ func TestDialTimeout(t *testing.T) {
 			defer close(errCh)
 
 			go func() {
-				l, err := mockServer(mockAdderss, mockTimeout)
+				addr, err := net.ResolveTCPAddr("tcp", mockAdderss)
+				if err != nil {
+					errCh <- err
+					return
+				}
+
+				l, err := net.ListenTCP("tcp", addr)
 				if err != nil {
 					errCh <- err
 					return
 				}
 				defer l.Close()
+
+				if err := l.SetDeadline(time.Now().Add(mockTimeout)); err != nil {
+					errCh <- err
+					return
+				}
 
 				conn, err := l.Accept()
 				if err != nil {
