@@ -33,6 +33,10 @@ start:
 stop:
 	docker stop minecraft
 
+.PHONY: tcpdump
+tcpdump:
+	sudo tcpdump -X port 25575 -t
+
 .PHONY: clean
 clean:
 	go mod tidy
