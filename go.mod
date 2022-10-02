@@ -3,6 +3,7 @@ module github.com/Aton-Kish/gorcon
 go 1.19
 
 require (
+	github.com/Aton-Kish/gonbt v0.1.0
 	github.com/caarlos0/env/v6 v6.10.1
 	github.com/joho/godotenv v1.4.0
 	github.com/stretchr/testify v1.8.0

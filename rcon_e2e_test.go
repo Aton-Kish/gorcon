@@ -27,6 +27,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/Aton-Kish/gonbt/slices"
 	rcon "github.com/Aton-Kish/gorcon"
 	"github.com/caarlos0/env/v6"
 	"github.com/joho/godotenv"
@@ -120,38 +121,124 @@ func TestDial(t *testing.T) {
 }
 
 func TestRcon_Command(t *testing.T) {
+	type Case struct {
+		name        string
+		command     string
+		expected    string
+		expectedErr error
+	}
+
+	items := []string{
+		"minecraft:dirt",
+		"minecraft:oak_log",
+		"minecraft:birch_log",
+		"minecraft:spruce_log",
+		"minecraft:jungle_log",
+		"minecraft:acacia_log",
+		"minecraft:dark_oak_log",
+		"minecraft:white_wool",
+		"minecraft:cobblestone",
+		"minecraft:stone",
+		"minecraft:granite",
+		"minecraft:diorite",
+		"minecraft:andesite",
+		"minecraft:terracotta",
+		"minecraft:sand",
+		"minecraft:glass",
+		"minecraft:emerald",
+		"minecraft:redstone",
+		"minecraft:lapis_lazuli",
+		"minecraft:copper_ingot",
+		"minecraft:iron_ingot",
+		"minecraft:gold_ingot",
+		"minecraft:diamond",
+		"minecraft:netherrack",
+		"minecraft:quartz",
+		"minecraft:netherite_ingot",
+		"minecraft:end_stone",
+		"minecraft:purpur_block",
+		"minecraft:shulker_box",
+	}
+
+	giveCases := make([]Case, 0, len(items))
+
+	for _, item := range items {
+		giveCases = append(giveCases, Case{
+			name:        fmt.Sprintf("positive case: /give jeb_ %s 1", item),
+			command:     fmt.Sprintf("/give jeb_ %s 1", item),
+			expected:    `^Gave 1 \[[a-zA-Z ]+\] to jeb_$`,
+			expectedErr: nil,
+		})
+	}
+
+	cases := slices.Concat(
+		[]Case{
+			{
+				name:        "positive case: /",
+				command:     "/",
+				expected:    `^Unknown or incomplete command, see below for error<--\[HERE\]$`,
+				expectedErr: nil,
+			},
+			{
+				name:        "positive case: /seed",
+				command:     "/seed",
+				expected:    `^Seed: \[-?\d+\]$`,
+				expectedErr: nil,
+			},
+			{
+				name:        "positive case: /time query day",
+				command:     "/time query day",
+				expected:    `^The time is \d+$`,
+				expectedErr: nil,
+			},
+			{
+				name:        "positive case: /list uuids - no player exists",
+				command:     "/list uuids",
+				expected:    `^There are 0 of a max of \d+ players online: $`,
+				expectedErr: nil,
+			},
+			{
+				name:        "positive case: /player jeb_ spawn",
+				command:     "/player jeb_ spawn",
+				expected:    `^$`,
+				expectedErr: nil,
+			},
+		},
+		giveCases,
+		[]Case{
+			{
+				name:        "positive case: /list uuids - jeb_ exists",
+				command:     "/list uuids",
+				expected:    `^There are 1 of a max of \d+ players online: jeb_ \(853c80ef-3c37-49fd-aa49-938b674adae6\)$`,
+				expectedErr: nil,
+			},
+			{
+				name:        "positive case: /data get entity 853c80ef-3c37-49fd-aa49-938b674adae6",
+				command:     "/data get entity 853c80ef-3c37-49fd-aa49-938b674adae6",
+				expected:    `^jeb_ has the following entity data: .*$`,
+				expectedErr: nil,
+			},
+			{
+				name:        "positive case: /player jeb_ kill",
+				command:     "/player jeb_ kill",
+				expected:    `^$`,
+				expectedErr: nil,
+			},
+			{
+				name:        "positive case: /kill @e[type=item]",
+				command:     "/kill @e[type=item]",
+				expected:    `^Killed .*$`,
+				expectedErr: nil,
+			},
+		},
+	)
+
 	addr := fmt.Sprintf("localhost:%s", cfg.Port)
 	conn, err := rcon.Dial(addr, cfg.Password)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer conn.Close()
-
-	cases := []struct {
-		name        string
-		command     string
-		expected    string
-		expectedErr error
-	}{
-		{
-			name:        "positive case: /seed",
-			command:     "/seed",
-			expected:    `^Seed: \[-?\d+\]$`,
-			expectedErr: nil,
-		},
-		{
-			name:        "positive case: /time query day",
-			command:     "/time query day",
-			expected:    `^The time is \d+$`,
-			expectedErr: nil,
-		},
-		{
-			name:        "positive case: /",
-			command:     "/",
-			expected:    `Unknown or incomplete command, see below for error<--\[HERE\]`,
-			expectedErr: nil,
-		},
-	}
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {

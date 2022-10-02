@@ -18,4 +18,5 @@ unit:
 
 .PHONY: e2e
 e2e:
+	go clean -testcache
 	go test -tags e2e ./...
