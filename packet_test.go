@@ -201,9 +201,10 @@ func Test_packet_encode(t *testing.T) {
 
 	for _, c := range packetCases {
 		cases = append(cases, Case{
-			name:     c.name,
-			packet:   c.packet,
-			expected: c.raw,
+			name:        c.name,
+			packet:      c.packet,
+			expected:    c.raw,
+			expectedErr: nil,
 		})
 	}
 
@@ -235,9 +236,10 @@ func Test_packet_decode(t *testing.T) {
 
 	for _, c := range packetCases {
 		cases = append(cases, Case{
-			name:     c.name,
-			raw:      c.raw,
-			expected: c.packet,
+			name:        c.name,
+			raw:         c.raw,
+			expected:    c.packet,
+			expectedErr: nil,
 		})
 	}
 
@@ -271,8 +273,10 @@ func Test_packet_net(t *testing.T) {
 
 	for _, c := range packetCases {
 		cases = append(cases, Case{
-			name:   c.name,
-			packet: c.packet,
+			name:      c.name,
+			packet:    c.packet,
+			clientErr: nil,
+			serverErr: nil,
 		})
 	}
 
