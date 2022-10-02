@@ -23,6 +23,7 @@ package rcon
 import (
 	"errors"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,6 +52,11 @@ func mockServer(address string, timeout time.Duration) (net.Listener, error) {
 	}
 
 	return l, nil
+}
+
+func pipe() (Rcon, Rcon) {
+	srv, clt := net.Pipe()
+	return &rcon{srv}, &rcon{clt}
 }
 
 func TestDialTimeout(t *testing.T) {
@@ -152,6 +158,120 @@ func TestDialTimeout(t *testing.T) {
 			} else {
 				assert.Error(t, srvErr)
 				assert.Equal(t, tt.serverErr, srvErr)
+			}
+		})
+	}
+}
+
+func Test_rcon_request(t *testing.T) {
+	cases := []struct {
+		name      string
+		id        int32
+		typ       packetType
+		payload   []byte
+		responses []packet
+		expected  *packet
+		clientErr error
+		serverErr error
+	}{
+		{
+			name:    "positive case: Auth Request",
+			id:      123456,
+			typ:     authRequestType,
+			payload: []byte("minecraft"),
+			responses: []packet{
+				{requestId: 123456, packetType: authResponseType, payload: []byte{}},
+			},
+			expected:  &packet{requestId: 123456, packetType: authResponseType, payload: []byte{}},
+			clientErr: nil,
+			serverErr: nil,
+		},
+		{
+			name:    "positive case: Command Request - non-fragment response",
+			id:      123456,
+			typ:     commandRequestType,
+			payload: []byte("request"),
+			responses: []packet{
+				{requestId: 123456, packetType: commandResponseType, payload: []byte("response")},
+				{requestId: 123456, packetType: commandResponseType, payload: []byte("Unknown request 64")},
+			},
+			expected:  &packet{requestId: 123456, packetType: commandResponseType, payload: []byte("response")},
+			clientErr: nil,
+			serverErr: nil,
+		},
+		{
+			name:    "positive case: Command Request - fragment response",
+			id:      123456,
+			typ:     commandRequestType,
+			payload: []byte("request"),
+			responses: []packet{
+				{requestId: 123456, packetType: commandResponseType, payload: []byte(strings.Repeat("response", 4096/len("response")))},
+				{requestId: 123456, packetType: commandResponseType, payload: []byte(strings.Repeat("response", 4096/len("response")))},
+				{requestId: 123456, packetType: commandResponseType, payload: []byte(strings.Repeat("response", 1808/len("response")))},
+				{requestId: 123456, packetType: commandResponseType, payload: []byte("Unknown request 64")},
+			},
+			expected:  &packet{requestId: 123456, packetType: commandResponseType, payload: []byte(strings.Repeat("response", 10000/len("response")))},
+			clientErr: nil,
+			serverErr: nil,
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			srv, clt := pipe()
+			defer clt.Close()
+
+			errCh := make(chan error, 1)
+			defer close(errCh)
+
+			go func() {
+				defer srv.Close()
+
+				req := new(packet)
+				if err := req.decode(srv); err != nil {
+					errCh <- err
+					return
+				}
+
+				if err := tt.responses[0].encode(srv); err != nil {
+					errCh <- err
+				}
+
+				if tt.typ == authRequestType {
+					errCh <- nil
+					return
+				}
+
+				dummy := new(packet)
+				if err := dummy.decode(srv); err != nil {
+					errCh <- err
+					return
+				}
+
+				for _, res := range tt.responses[1:] {
+					if err := res.encode(srv); err != nil {
+						errCh <- err
+					}
+				}
+
+				errCh <- nil
+			}()
+
+			actual, cltErr := clt.request(tt.id, tt.typ, tt.payload)
+
+			if tt.clientErr == nil {
+				assert.NoError(t, cltErr)
+				assert.Equal(t, tt.expected, actual)
+			} else {
+				assert.Error(t, cltErr)
+				assert.Equal(t, tt.clientErr, cltErr)
+			}
+
+			srvErr := <-errCh
+			if tt.serverErr == nil {
+				assert.NoError(t, srvErr)
+			} else {
+				assert.Error(t, srvErr)
 			}
 		})
 	}
