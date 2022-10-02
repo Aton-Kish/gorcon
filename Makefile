@@ -6,7 +6,7 @@ help:
 
 .PHONY: start
 start:
-	docker run --rm -d --name minecraft -p 25565:25565 -p $(RCON_PORT):$(RCON_PORT) --env-file server/.env -v ${PWD}/server/data:/data itzg/minecraft-server
+	docker run --rm -d --name minecraft -p $(RCON_PORT):$(RCON_PORT) --env-file server/.env -v ${PWD}/server/data:/data -v ${PWD}/server/mods.txt:/mods.txt itzg/minecraft-server
 
 .PHONY: stop
 stop:

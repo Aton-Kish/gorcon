@@ -1,0 +1,7 @@
+# name: Fabric API
+# url:  https://www.curseforge.com/minecraft/mc-mods/fabric-api
+https://edge.forgecdn.net/files/4006/117/fabric-api-0.62.0+1.19.2.jar
+
+# name: Carpet
+# url:  https://www.curseforge.com/minecraft/mc-mods/carpet
+https://edge.forgecdn.net/files/3902/746/fabric-carpet-1.19.1-1.4.83+v220727.jar
