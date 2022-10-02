@@ -33,11 +33,11 @@ const (
 )
 
 type Rcon interface {
-	net.Conn
+	Read(b []byte) (int, error)
+	Write(b []byte) (int, error)
+	Close() error
 
-	auth(password string) error
 	Command(command string) (string, error)
-	request(id int32, typ packetType, payload []byte) (*packet, error)
 }
 
 type rcon struct {
@@ -68,7 +68,7 @@ func DialTimeout(addr string, password string, timeout time.Duration) (Rcon, err
 	return c, nil
 }
 
-func pipe() (Rcon, Rcon) {
+func pipe() (*rcon, *rcon) {
 	srv, clt := net.Pipe()
 	return &rcon{srv}, &rcon{clt}
 }
