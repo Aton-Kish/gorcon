@@ -7,7 +7,7 @@ A Minecraft RCON client
 Use go get to install the library
 
 ```go
-go get github.com/Aton-Kish/gonbt
+go get github.com/Aton-Kish/gorcon
 ```
 
 Import in your application
