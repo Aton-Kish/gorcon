@@ -21,6 +21,7 @@
 package rcon
 
 import (
+	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -76,30 +77,37 @@ func (p *packet) length() int {
 }
 
 func (p *packet) encode(w io.Writer) error {
+	// NOTE: prevent split packets using bufio
+	buf := bufio.NewWriter(w)
+
 	l := int32(p.length())
-	if err := binary.Write(w, binary.LittleEndian, &l); err != nil {
+	if err := binary.Write(buf, binary.LittleEndian, &l); err != nil {
 		return NewPacketError("encode", p, err)
 	}
 
-	if err := binary.Write(w, binary.LittleEndian, &p.requestId); err != nil {
+	if err := binary.Write(buf, binary.LittleEndian, &p.requestId); err != nil {
 		return NewPacketError("encode", p, err)
 	}
 
-	if err := binary.Write(w, binary.LittleEndian, &p.packetType); err != nil {
+	if err := binary.Write(buf, binary.LittleEndian, &p.packetType); err != nil {
 		return NewPacketError("encode", p, err)
 	}
 
-	if err := binary.Write(w, binary.LittleEndian, p.payload); err != nil {
+	if err := binary.Write(buf, binary.LittleEndian, p.payload); err != nil {
 		return NewPacketError("encode", p, err)
 	}
 
 	// NOTE: payload is NULL-terminated
-	if err := binary.Write(w, binary.LittleEndian, []byte{0x00}); err != nil {
+	if err := binary.Write(buf, binary.LittleEndian, []byte{0x00}); err != nil {
 		return NewPacketError("encode", p, err)
 	}
 
 	// NOTE: packet has 1-byte pad
-	if err := binary.Write(w, binary.LittleEndian, []byte{0x00}); err != nil {
+	if err := binary.Write(buf, binary.LittleEndian, []byte{0x00}); err != nil {
+		return NewPacketError("encode", p, err)
+	}
+
+	if err := buf.Flush(); err != nil {
 		return NewPacketError("encode", p, err)
 	}
 
