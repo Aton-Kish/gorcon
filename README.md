@@ -58,6 +58,50 @@ func main() {
 }
 ```
 
+## Development
+
+### doc
+
+```shell
+: install godoc
+make install
+
+: run godoc server
+make doc
+
+: uninstall godoc
+make uninstall
+```
+
+### unit test
+
+```shell
+make unit
+```
+
+### E2E test
+
+```shell
+: start minecraft docker container
+: it takes a few minutes
+make start
+
+: dump packets for debug
+make tcpdump
+
+: E2E test
+make e2e
+
+: stop minecraft docker container
+make stop
+```
+
+### Clean
+
+```shell
+make clean
+```
+
 ## License
 
 This library is licensed under the MIT License, see [LICENSE](./LICENSE).
