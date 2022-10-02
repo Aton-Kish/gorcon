@@ -9,3 +9,7 @@ start:
 .PHONY: stop
 stop:
 	docker stop minecraft
+
+.PHONY: e2e
+e2e:
+	go test -v -tags e2e ./...

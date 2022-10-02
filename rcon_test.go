@@ -18,6 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+//go:build !e2e
+
 package rcon
 
 import (
@@ -60,7 +62,7 @@ func TestDialTimeout(t *testing.T) {
 		},
 		{
 			name:      "negative case: invalid port",
-			addr:      "localhost:25565",
+			addr:      "localhost:50000",
 			password:  "minecraft",
 			clientErr: errors.New(""), // TODO
 			serverErr: errors.New("timeout"),
