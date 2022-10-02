@@ -51,16 +51,16 @@ func newPacket(id int32, typ packetType, payload []byte) *packet {
 	}
 }
 
-func (p *packet) length() int32 {
+func (p *packet) length() int {
 	// Request ID                :                4 bit
 	// Packet Type               :                4 bit
 	// Payload (NULL-terminated) : len(payload) + 1 bit
 	// 1-byte Pad                :                1 bit
-	return int32(4 + 4 + (len(p.payload) + 1) + 1)
+	return 4 + 4 + (len(p.payload) + 1) + 1
 }
 
 func (p *packet) encode(w io.Writer) error {
-	l := p.length()
+	l := int32(p.length())
 	if err := binary.Write(w, binary.LittleEndian, &l); err != nil {
 		return err
 	}

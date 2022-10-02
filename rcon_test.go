@@ -273,8 +273,14 @@ func Test_rcon_Command(t *testing.T) {
 					return
 				}
 
-				if err := tt.responses[0].encode(srv); err != nil {
+				res := tt.responses[0]
+				if err := res.encode(srv); err != nil {
 					errCh <- err
+				}
+
+				if res.length() < maxResponseLength {
+					errCh <- nil
+					return
 				}
 
 				dummy := new(packet)
@@ -354,9 +360,9 @@ func Test_rcon_request(t *testing.T) {
 			typ:     commandRequestType,
 			payload: []byte("request"),
 			responses: []packet{
-				{requestId: 123456, packetType: commandResponseType, payload: []byte(strings.Repeat("response", 4096/len("response")))},
-				{requestId: 123456, packetType: commandResponseType, payload: []byte(strings.Repeat("response", 4096/len("response")))},
-				{requestId: 123456, packetType: commandResponseType, payload: []byte(strings.Repeat("response", 1808/len("response")))},
+				{requestId: 123456, packetType: commandResponseType, payload: []byte(strings.Repeat("response", maxResponsePayloadSize/len("response")))},
+				{requestId: 123456, packetType: commandResponseType, payload: []byte(strings.Repeat("response", maxResponsePayloadSize/len("response")))},
+				{requestId: 123456, packetType: commandResponseType, payload: []byte(strings.Repeat("response", (10000-maxResponsePayloadSize*2)/len("response")))},
 				{requestId: 123456, packetType: commandResponseType, payload: []byte("Unknown request 64")},
 			},
 			expected:  &packet{requestId: 123456, packetType: commandResponseType, payload: []byte(strings.Repeat("response", 10000/len("response")))},
@@ -382,11 +388,12 @@ func Test_rcon_request(t *testing.T) {
 					return
 				}
 
-				if err := tt.responses[0].encode(srv); err != nil {
+				res := tt.responses[0]
+				if err := res.encode(srv); err != nil {
 					errCh <- err
 				}
 
-				if tt.typ == authRequestType {
+				if res.length() < maxResponseLength {
 					errCh <- nil
 					return
 				}

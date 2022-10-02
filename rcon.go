@@ -28,7 +28,9 @@ import (
 )
 
 const (
-	unauthorizedRequestID = -1
+	unauthorizedRequestID  = -1
+	maxResponsePayloadSize = 4096
+	maxResponseLength      = 4 + 4 + (maxResponsePayloadSize + 1) + 1
 )
 
 type Rcon interface {
@@ -107,7 +109,7 @@ func (c *rcon) request(id int32, typ packetType, payload []byte) (*packet, error
 		return nil, err
 	}
 
-	if typ == authRequestType {
+	if res.length() < maxResponseLength {
 		return res, nil
 	}
 
