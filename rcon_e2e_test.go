@@ -130,25 +130,25 @@ func TestRcon_Command(t *testing.T) {
 	cases := []struct {
 		name        string
 		command     string
-		contains    string
+		expected    string
 		expectedErr error
 	}{
 		{
 			name:        "positive case: /seed",
 			command:     "/seed",
-			contains:    "Seed: ",
+			expected:    `^Seed: \[-?\d+\]$`,
 			expectedErr: nil,
 		},
 		{
 			name:        "positive case: /time query day",
 			command:     "/time query day",
-			contains:    "The time is ",
+			expected:    `^The time is \d+$`,
 			expectedErr: nil,
 		},
 		{
 			name:        "positive case: /",
 			command:     "/",
-			contains:    "Unknown or incomplete command, see below for error<--[HERE]",
+			expected:    `Unknown or incomplete command, see below for error<--\[HERE\]`,
 			expectedErr: nil,
 		},
 	}
@@ -158,7 +158,7 @@ func TestRcon_Command(t *testing.T) {
 			actual, err := conn.Command(tt.command)
 			if tt.expectedErr == nil {
 				assert.NoError(t, err)
-				assert.Contains(t, actual, tt.contains)
+				assert.Regexp(t, tt.expected, actual)
 			} else {
 				assert.Error(t, err)
 				assert.Equal(t, tt.expectedErr, err)
