@@ -24,7 +24,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"strconv"
 )
 
 // Type
@@ -79,29 +78,29 @@ func (p *packet) length() int {
 func (p *packet) encode(w io.Writer) error {
 	l := int32(p.length())
 	if err := binary.Write(w, binary.LittleEndian, &l); err != nil {
-		return err
+		return NewPacketError("encode", p, err)
 	}
 
 	if err := binary.Write(w, binary.LittleEndian, &p.requestId); err != nil {
-		return err
+		return NewPacketError("encode", p, err)
 	}
 
 	if err := binary.Write(w, binary.LittleEndian, &p.packetType); err != nil {
-		return err
+		return NewPacketError("encode", p, err)
 	}
 
 	if err := binary.Write(w, binary.LittleEndian, p.payload); err != nil {
-		return err
+		return NewPacketError("encode", p, err)
 	}
 
 	// NOTE: payload is NULL-terminated
 	if err := binary.Write(w, binary.LittleEndian, []byte{0x00}); err != nil {
-		return err
+		return NewPacketError("encode", p, err)
 	}
 
 	// NOTE: packet has 1-byte pad
 	if err := binary.Write(w, binary.LittleEndian, []byte{0x00}); err != nil {
-		return err
+		return NewPacketError("encode", p, err)
 	}
 
 	return nil
@@ -110,30 +109,30 @@ func (p *packet) encode(w io.Writer) error {
 func (p *packet) decode(r io.Reader) error {
 	var l int32
 	if err := binary.Read(r, binary.LittleEndian, &l); err != nil {
-		return err
+		return NewPacketError("decode", p, err)
 	}
 
 	if err := binary.Read(r, binary.LittleEndian, &p.requestId); err != nil {
-		return err
+		return NewPacketError("decode", p, err)
 	}
 
 	if err := binary.Read(r, binary.LittleEndian, &p.packetType); err != nil {
-		return err
+		return NewPacketError("decode", p, err)
 	}
 
 	p.payload = make([]byte, l-(4+4+1+1))
 	if err := binary.Read(r, binary.LittleEndian, p.payload); err != nil {
-		return err
+		return NewPacketError("decode", p, err)
 	}
 
 	// NOTE: payload is NULL-terminated
 	if err := binary.Read(r, binary.LittleEndian, make([]byte, 1)); err != nil {
-		return err
+		return NewPacketError("decode", p, err)
 	}
 
 	// NOTE: packet has 1-byte pad
 	if err := binary.Read(r, binary.LittleEndian, make([]byte, 1)); err != nil {
-		return err
+		return NewPacketError("decode", p, err)
 	}
 
 	return nil
