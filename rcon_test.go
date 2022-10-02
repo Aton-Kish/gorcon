@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	mockAdderss  = ":25575"
+	mockAdderss  = ":25576" // avoid conflict with e2e test
 	mockPassword = "minecraft"
 	mockTimeout  = 100 * time.Millisecond
 )
@@ -48,14 +48,14 @@ func TestDialTimeout(t *testing.T) {
 	}{
 		{
 			name:      "positive case",
-			addr:      "localhost:25575",
+			addr:      "localhost:25576",
 			password:  "minecraft",
 			clientErr: nil,
 			serverErr: nil,
 		},
 		{
 			name:      "negative case: invalid addr",
-			addr:      "192.0.2.100:25575",
+			addr:      "192.0.2.100:25576",
 			password:  "minecraft",
 			clientErr: errors.New(""), // TODO
 			serverErr: errors.New("timeout"),
@@ -69,7 +69,7 @@ func TestDialTimeout(t *testing.T) {
 		},
 		{
 			name:      "negative case: invalid password",
-			addr:      "localhost:25575",
+			addr:      "localhost:25576",
 			password:  "tfarcenim",
 			clientErr: errors.New("unauthorized"),
 			serverErr: nil,
@@ -102,7 +102,7 @@ func TestDialTimeout(t *testing.T) {
 
 				conn, err := l.Accept()
 				if err != nil {
-					if err.Error() == "accept tcp [::]:25575: i/o timeout" {
+					if err.Error() == "accept tcp [::]:25576: i/o timeout" {
 						errCh <- errors.New("timeout")
 					} else {
 						errCh <- err
