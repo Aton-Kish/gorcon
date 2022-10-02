@@ -22,7 +22,9 @@ package rcon
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
+	"strconv"
 )
 
 // Type
@@ -49,6 +51,21 @@ func newPacket(id int32, typ packetType, payload []byte) *packet {
 		packetType: typ,
 		payload:    payload,
 	}
+}
+
+func (p *packet) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+
+	var payload string
+	if p.payload == nil {
+		payload = "<nil>"
+	} else {
+		payload = string(p.payload)
+	}
+
+	return fmt.Sprintf("Length: %d, RequestId: %d, Type: %d, Payload: %s", p.length(), p.requestId, p.packetType, payload)
 }
 
 func (p *packet) length() int {
