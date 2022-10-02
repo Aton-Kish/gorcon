@@ -21,7 +21,7 @@ RUN if [ "${NODE_VERSION}" != "none" ]; then su vscode -c "umask 0002 && . /usr/
 
 # [Optional] User prefrences
 RUN apt-get update && \
-    apt-get install -y bash-completion && \
+    apt-get install -y bash-completion tcpdump && \
     git config --global core.editor "nano"
 
 USER vscode
