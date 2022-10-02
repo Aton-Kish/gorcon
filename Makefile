@@ -10,6 +10,10 @@ start:
 stop:
 	docker stop minecraft
 
+.PHONY: unit
+unit:
+	go test -v ./...
+
 .PHONY: e2e
 e2e:
 	go test -v -tags e2e ./...
