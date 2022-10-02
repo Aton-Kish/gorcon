@@ -24,6 +24,34 @@ import (
 	"fmt"
 )
 
+type RconError struct {
+	op  string
+	err error
+}
+
+func NewRconError(op string, err error) error {
+	return &RconError{op, err}
+}
+
+func (e *RconError) Error() string {
+	if e == nil {
+		return "<nil>"
+	}
+
+	var err string
+	if e.err == nil {
+		err = "<nil>"
+	} else {
+		err = e.err.Error()
+	}
+
+	return fmt.Sprintf("failed to %s; error: %s", e.op, err)
+}
+
+func (e *RconError) Unwrap() error {
+	return e.err
+}
+
 type PacketError struct {
 	op     string
 	packet *packet
@@ -39,7 +67,14 @@ func (e *PacketError) Error() string {
 		return "<nil>"
 	}
 
-	return fmt.Sprintf("failed to %s packet{%s}; message: %s", e.op, e.packet.String(), e.err.Error())
+	var err string
+	if e.err == nil {
+		err = "<nil>"
+	} else {
+		err = e.err.Error()
+	}
+
+	return fmt.Sprintf("failed to %s packet{%s}; error: %s", e.op, e.packet.String(), err)
 }
 
 func (e *PacketError) Unwrap() error {

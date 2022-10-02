@@ -21,7 +21,6 @@
 package rcon
 
 import (
-	"errors"
 	"math/rand"
 	"net"
 	"time"
@@ -57,7 +56,7 @@ func Dial(addr string, password string) (Rcon, error) {
 func DialTimeout(addr string, password string, timeout time.Duration) (Rcon, error) {
 	conn, err := net.DialTimeout("tcp", addr, timeout)
 	if err != nil {
-		return nil, err
+		return nil, NewRconError("dial", err)
 	}
 
 	c := &rcon{conn}
@@ -82,7 +81,7 @@ func (c *rcon) auth(password string) error {
 	}
 
 	if res.requestId != id || res.requestId == unauthorizedRequestID {
-		return errors.New("unauthorized")
+		return NewRconError("auth", nil)
 	}
 
 	return nil
