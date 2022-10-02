@@ -1,75 +1,53 @@
-/*
-Copyright (c) 2022 Aton-Kish
+// Copyright (c) 2022 Aton-Kish
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
-
-/*
-Package rcon extends net.Conn for RCON.
-
-
-Example
-
-
-A simple RCON client for Minecraft:
-
-	c, err := rcon.Dial("localhost:25575", "password")
-	if err != nil {
-		log.Fatalf("%+v", err)
-	}
-	defer c.Close()
-
-	// Exec any commands
-	res, err := c.Command("/seed")
-	if err != nil {
-		log.Fatalf("%+v", err)
-	}
-
-	fmt.Println(res) // Seed: [...]
-*/
 package rcon
 
 import (
 	"math/rand"
 	"net"
 	"time"
-
-	"github.com/pkg/errors"
-
-	"github.com/Aton-Kish/gorcon/packet"
-	"github.com/Aton-Kish/gorcon/types"
 )
 
 const (
-	badAuthRequestID         = -1
-	requestPayloadMaxLength  = 1446
-	responsePayloadMaxLength = 4096
+	unauthorizedRequestID  = -1
+	maxResponsePayloadSize = 4096
+	maxResponseLength      = 4 + 4 + (maxResponsePayloadSize + 1) + 1
 )
 
-type Rcon struct {
+type Rcon interface {
+	Read(b []byte) (int, error)
+	Write(b []byte) (int, error)
+	Close() error
+
+	Command(command string) (string, error)
+}
+
+type rcon struct {
 	net.Conn
 }
 
 func Dial(addr string, password string) (Rcon, error) {
 	c, err := DialTimeout(addr, password, 0)
 	if err != nil {
-		return Rcon{}, err
+		return nil, err
 	}
 
 	return c, nil
@@ -78,146 +56,81 @@ func Dial(addr string, password string) (Rcon, error) {
 func DialTimeout(addr string, password string, timeout time.Duration) (Rcon, error) {
 	conn, err := net.DialTimeout("tcp", addr, timeout)
 	if err != nil {
-		return Rcon{}, errors.WithStack(err)
+		return nil, NewRconError("dial", err)
 	}
 
-	c := Rcon{conn}
+	c := &rcon{conn}
 	if err := c.auth(password); err != nil {
 		defer c.Close()
-		return Rcon{}, err
+		return nil, err
 	}
 
 	return c, nil
 }
 
-func (c *Rcon) auth(password string) error {
+func pipe() (*rcon, *rcon) {
+	srv, clt := net.Pipe()
+	return &rcon{srv}, &rcon{clt}
+}
+
+func (c *rcon) auth(password string) error {
 	id := rand.Int31()
-	p := []byte(password)
-	res, err := c.request(id, types.AuthRequest, p)
+	res, err := c.request(id, authRequestType, []byte(password))
 	if err != nil {
 		return err
 	}
 
-	if res.RequestID != id || res.RequestID == badAuthRequestID {
-		return errors.New("bad auth")
+	if res.requestId != id || res.requestId == unauthorizedRequestID {
+		return NewRconError("auth", nil)
 	}
 
 	return nil
 }
 
-// For details about commands, see the wiki https://minecraft.fandom.com/wiki/Commands.
-func (c *Rcon) Command(command string) (string, error) {
+func (c *rcon) Command(command string) (string, error) {
 	id := rand.Int31()
-
-	p := []byte(command)
-	if len(p) > requestPayloadMaxLength {
-		return "", errors.Errorf("request payload is over %d", requestPayloadMaxLength)
-	}
-
-	res, err := c.requestWithEndConfirmation(id, types.CommandRequest, p)
+	res, err := c.request(id, commandRequestType, []byte(command))
 	if err != nil {
 		return "", err
 	}
 
-	return string(res.Payload), nil
+	return string(res.payload), nil
 }
 
-func (c *Rcon) request(id int32, typ types.Packet, payload []byte) (*packet.Packet, error) {
-	var res *packet.Packet
-
-	req := packet.NewPacket(id, typ, payload)
-	if err := c.writePacket(req); err != nil {
+func (c *rcon) request(id int32, typ packetType, payload []byte) (*packet, error) {
+	req := newPacket(id, typ, payload)
+	if err := req.encode(c); err != nil {
 		return nil, err
 	}
 
-	res, err := c.readPacket()
-	if err != nil {
+	res := new(packet)
+	if err := res.decode(c); err != nil {
 		return nil, err
 	}
 
-	return res, nil
-}
-
-func (c *Rcon) requestWithEndConfirmation(id int32, typ types.Packet, payload []byte) (*packet.Packet, error) {
-	res, err := c.request(id, typ, payload)
-	if err != nil {
-		return nil, err
+	if res.length() < maxResponseLength {
+		return res, nil
 	}
 
-	// Dummy Request
-	req := packet.NewPacket(id, types.DummyRequest, []byte{})
-	if err := c.writePacket(req); err != nil {
+	// NOTE: dummy request
+	dummy := newPacket(id, dummyRequestType, []byte{})
+	if err := dummy.encode(c); err != nil {
 		return nil, err
 	}
 
 	for {
-		pac, err := c.readPacket()
-		if err != nil {
+		more := new(packet)
+		if err := more.decode(c); err != nil {
 			return nil, err
 		}
 
-		if pac.RequestID != id {
-			continue
-		}
-
-		body := string(pac.Payload)
-		if body == "Unknown request 64" {
-			// Termination
+		if string(more.payload) == "Unknown request 64" {
+			// NOTE: termination
 			break
 		}
 
-		res.Length += int32(len(pac.Payload))
-		res.Payload = append(res.Payload, pac.Payload...)
+		res.payload = append(res.payload, more.payload...)
 	}
 
 	return res, nil
-}
-
-func (c *Rcon) readPacket() (*packet.Packet, error) {
-	hraw := make([]byte, 0, 4+4+4)
-	for len(hraw) < 4+4+4 {
-		buf := make([]byte, 4+4+4-len(hraw))
-		n, err := c.Read(buf)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-
-		hraw = append(hraw, buf[:n]...)
-	}
-
-	h, err := packet.ParseHeader(hraw)
-	if err != nil {
-		return nil, err
-	}
-
-	praw := make([]byte, 0, h.Length-(4+4))
-	for len(praw) < int(h.Length)-(4+4) {
-		buf := make([]byte, int(h.Length)-(4+4+len(praw)))
-		n, err := c.Read(buf)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-
-		praw = append(praw, buf[:n]...)
-	}
-
-	pac, err := packet.PackWithHeader(praw, h)
-	if err != nil {
-		return nil, err
-	}
-
-	return pac, nil
-}
-
-func (c *Rcon) writePacket(pac *packet.Packet) error {
-	raw, err := packet.Unpack(pac)
-	if err != nil {
-		return err
-	}
-
-	if _, err := c.Write(raw); err != nil {
-		return errors.WithStack(err)
-	}
-
-	return nil
 }
