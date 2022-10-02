@@ -18,12 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//go:build e2e
+// go:build e2e
 
 package rcon_test
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -75,31 +74,31 @@ func TestDial(t *testing.T) {
 			name:        "negative case: missing address",
 			address:     "",
 			password:    cfg.Password,
-			expectedErr: errors.New(""), // TODO
+			expectedErr: &rcon.RconError{},
 		},
 		{
 			name:        "negative case: missing port",
 			address:     "localhost",
 			password:    cfg.Password,
-			expectedErr: errors.New(""), // TODO
+			expectedErr: &rcon.RconError{},
 		},
 		{
 			name:        "negative case: invalid port",
 			address:     "localhost:50000",
 			password:    cfg.Password,
-			expectedErr: errors.New(""), // TODO
+			expectedErr: &rcon.RconError{},
 		},
 		{
 			name:        "negative case: missing password",
 			address:     fmt.Sprintf("localhost:%s", cfg.Port),
 			password:    "",
-			expectedErr: errors.New("unauthorized"),
+			expectedErr: &rcon.RconError{},
 		},
 		{
 			name:        "negative case: invalid password",
 			address:     fmt.Sprintf("localhost:%s", cfg.Port),
 			password:    "tfarcenim",
-			expectedErr: errors.New("unauthorized"),
+			expectedErr: &rcon.RconError{},
 		},
 	}
 
@@ -110,7 +109,7 @@ func TestDial(t *testing.T) {
 				assert.NoError(t, err)
 			} else {
 				assert.Error(t, err)
-				// assert.Equal(t, tt.expectedErr, err)
+				assert.IsType(t, tt.expectedErr, err)
 			}
 
 			if conn != nil {
