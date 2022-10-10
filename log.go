@@ -30,14 +30,9 @@ import (
 )
 
 func getLogLevel() zerolog.Level {
-	levelStr, ok := os.LookupEnv("LOG_LEVEL")
-	if !ok {
-		return zerolog.InfoLevel
-	}
-
-	level, err := zerolog.ParseLevel(strings.ToLower(levelStr))
+	level, err := zerolog.ParseLevel(strings.ToLower(os.Getenv("LOG_LEVEL")))
 	if err != nil {
-		return zerolog.InfoLevel
+		return zerolog.NoLevel
 	}
 
 	return level
