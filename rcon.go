@@ -56,13 +56,13 @@ func Dial(addr string, password string) (Rcon, error) {
 func DialTimeout(addr string, password string, timeout time.Duration) (Rcon, error) {
 	conn, err := net.DialTimeout("tcp", addr, timeout)
 	if err != nil {
-		return nil, NewRconError("dial", err)
+		return nil, &RconError{Op: "dial", Err: err}
 	}
 
 	c := &rcon{conn}
 	if err := c.auth(password); err != nil {
 		defer c.Close()
-		return nil, err
+		return nil, &RconError{Op: "dial", Err: err}
 	}
 
 	return c, nil
@@ -77,11 +77,11 @@ func (c *rcon) auth(password string) error {
 	id := rand.Int31()
 	res, err := c.request(id, authRequestType, []byte(password))
 	if err != nil {
-		return err
+		return &RconError{Op: "auth", Err: err}
 	}
 
 	if res.requestId != id || res.requestId == unauthorizedRequestID {
-		return NewRconError("auth", nil)
+		return &RconError{Op: "auth"}
 	}
 
 	return nil
@@ -91,7 +91,7 @@ func (c *rcon) Command(command string) (string, error) {
 	id := rand.Int31()
 	res, err := c.request(id, commandRequestType, []byte(command))
 	if err != nil {
-		return "", err
+		return "", &RconError{Op: "command", Err: err}
 	}
 
 	return string(res.payload), nil

@@ -25,12 +25,8 @@ import (
 )
 
 type RconError struct {
-	op  string
-	err error
-}
-
-func NewRconError(op string, err error) error {
-	return &RconError{op, err}
+	Op  string
+	Err error
 }
 
 func (e *RconError) Error() string {
@@ -39,27 +35,22 @@ func (e *RconError) Error() string {
 	}
 
 	var err string
-	if e.err == nil {
+	if e.Err == nil {
 		err = "<nil>"
 	} else {
-		err = e.err.Error()
+		err = e.Err.Error()
 	}
 
-	return fmt.Sprintf("failed to %s; error: %s", e.op, err)
+	return fmt.Sprintf("rcon %s: %s", e.Op, err)
 }
 
 func (e *RconError) Unwrap() error {
-	return e.err
+	return e.Err
 }
 
 type PacketError struct {
-	op     string
-	packet *packet
-	err    error
-}
-
-func NewPacketError(op string, packet *packet, err error) error {
-	return &PacketError{op, packet, err}
+	Op  string
+	Err error
 }
 
 func (e *PacketError) Error() string {
@@ -68,15 +59,15 @@ func (e *PacketError) Error() string {
 	}
 
 	var err string
-	if e.err == nil {
+	if e.Err == nil {
 		err = "<nil>"
 	} else {
-		err = e.err.Error()
+		err = e.Err.Error()
 	}
 
-	return fmt.Sprintf("failed to %s packet{%s}; error: %s", e.op, e.packet.String(), err)
+	return fmt.Sprintf("packet %s: %s", e.Op, err)
 }
 
 func (e *PacketError) Unwrap() error {
-	return e.err
+	return e.Err
 }
