@@ -21,53 +21,28 @@
 package rcon
 
 import (
-	"fmt"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
-type RconError struct {
-	Op  string
-	Err error
-}
-
-func (e *RconError) Error() string {
-	if e == nil {
-		return "<nil>"
+func getLogLevel() zerolog.Level {
+	level, err := zerolog.ParseLevel(strings.ToLower(os.Getenv("LOG_LEVEL")))
+	if err != nil {
+		return zerolog.NoLevel
 	}
 
-	var err string
-	if e.Err == nil {
-		err = "<nil>"
-	} else {
-		err = e.Err.Error()
-	}
-
-	return fmt.Sprintf("rcon %s: %s", e.Op, err)
+	return level
 }
 
-func (e *RconError) Unwrap() error {
-	return e.Err
-}
+func init() {
+	level := getLogLevel()
+	zerolog.SetGlobalLevel(level)
 
-type PacketError struct {
-	Op  string
-	Err error
-}
+	zerolog.TimeFieldFormat = time.RFC3339Nano
 
-func (e *PacketError) Error() string {
-	if e == nil {
-		return "<nil>"
-	}
-
-	var err string
-	if e.Err == nil {
-		err = "<nil>"
-	} else {
-		err = e.Err.Error()
-	}
-
-	return fmt.Sprintf("packet %s: %s", e.Op, err)
-}
-
-func (e *PacketError) Unwrap() error {
-	return e.Err
+	log.Logger = zerolog.New(os.Stderr).With().Timestamp().Str("app", "gorcon").Logger()
 }

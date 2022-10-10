@@ -24,6 +24,8 @@ import (
 	"math/rand"
 	"net"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -56,15 +58,20 @@ func Dial(addr string, password string) (Rcon, error) {
 func DialTimeout(addr string, password string, timeout time.Duration) (Rcon, error) {
 	conn, err := net.DialTimeout("tcp", addr, timeout)
 	if err != nil {
-		return nil, NewRconError("dial", err)
+		err = &RconError{Op: "dial", Err: err}
+		log.Error().Caller().Str("func", "DialTimeout").Err(err).Msg("")
+		return nil, err
 	}
 
 	c := &rcon{conn}
 	if err := c.auth(password); err != nil {
 		defer c.Close()
+		err = &RconError{Op: "dial", Err: err}
+		log.Error().Caller().Str("func", "DialTimeout").Err(err).Msg("")
 		return nil, err
 	}
 
+	log.Debug().Caller().Str("func", "DialTimeout").Msg("connection established")
 	return c, nil
 }
 
@@ -77,13 +84,18 @@ func (c *rcon) auth(password string) error {
 	id := rand.Int31()
 	res, err := c.request(id, authRequestType, []byte(password))
 	if err != nil {
+		err = &RconError{Op: "auth", Err: err}
+		log.Error().Caller().Str("func", "(*rcon).auth").Err(err).Msg("")
 		return err
 	}
 
 	if res.requestId != id || res.requestId == unauthorizedRequestID {
-		return NewRconError("auth", nil)
+		err = &RconError{Op: "auth"}
+		log.Error().Caller().Str("func", "(*rcon).auth").Int32("requestId", res.requestId).Err(err).Msg("")
+		return err
 	}
 
+	log.Debug().Caller().Str("func", "(*rcon).auth").Int32("requestId", res.requestId).Msg("")
 	return nil
 }
 
@@ -91,36 +103,46 @@ func (c *rcon) Command(command string) (string, error) {
 	id := rand.Int31()
 	res, err := c.request(id, commandRequestType, []byte(command))
 	if err != nil {
+		err = &RconError{Op: "command", Err: err}
+		log.Error().Caller().Str("func", "(*rcon).Command").Err(err).Msg("")
 		return "", err
 	}
 
-	return string(res.payload), nil
+	payload := string(res.payload)
+
+	log.Debug().Caller().Str("func", "(*rcon).Command").Int32("requestId", res.requestId).Str("response", payload).Msg("")
+	return payload, nil
 }
 
 func (c *rcon) request(id int32, typ packetType, payload []byte) (*packet, error) {
 	req := newPacket(id, typ, payload)
 	if err := req.encode(c); err != nil {
+		log.Error().Caller().Str("func", "(*rcon).request").Err(err).Msg("")
 		return nil, err
 	}
 
 	res := new(packet)
 	if err := res.decode(c); err != nil {
+		log.Error().Caller().Str("func", "(*rcon).request").Err(err).Msg("")
 		return nil, err
 	}
 
 	if res.length() < maxResponseLength {
+		log.Debug().Caller().Str("func", "(*rcon).request").Str("packet", res.String()).Msg("")
 		return res, nil
 	}
 
 	// NOTE: dummy request
 	dummy := newPacket(id, dummyRequestType, []byte{})
 	if err := dummy.encode(c); err != nil {
+		log.Error().Caller().Str("func", "(*rcon).request").Err(err).Msg("")
 		return nil, err
 	}
 
 	for {
 		more := new(packet)
 		if err := more.decode(c); err != nil {
+			log.Error().Caller().Str("func", "(*rcon).request").Err(err).Msg("")
 			return nil, err
 		}
 
@@ -132,5 +154,6 @@ func (c *rcon) request(id int32, typ packetType, payload []byte) (*packet, error
 		res.payload = append(res.payload, more.payload...)
 	}
 
+	log.Debug().Caller().Str("func", "(*rcon).request").Str("packet", res.String()).Msg("")
 	return res, nil
 }
