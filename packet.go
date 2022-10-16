@@ -25,8 +25,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-
-	"github.com/rs/zerolog/log"
 )
 
 // Type
@@ -85,49 +83,48 @@ func (p *packet) encode(w io.Writer) error {
 	l := int32(p.length())
 	if err := binary.Write(buf, binary.LittleEndian, &l); err != nil {
 		err = &PacketError{Op: "encode", Err: err}
-		log.Error().Caller().Str("func", "(*packet).encode").Err(err).Str("packet", p.String()).Msg("")
+		logger.Println("failed to encode", "func", getFuncName(), "packet", p, "error", err)
 		return err
 	}
 
 	if err := binary.Write(buf, binary.LittleEndian, &p.requestId); err != nil {
 		err = &PacketError{Op: "encode", Err: err}
-		log.Error().Caller().Str("func", "(*packet).encode").Err(err).Str("packet", p.String()).Msg("")
+		logger.Println("failed to encode", "func", getFuncName(), "packet", p, "error", err)
 		return err
 	}
 
 	if err := binary.Write(buf, binary.LittleEndian, &p.packetType); err != nil {
 		err = &PacketError{Op: "encode", Err: err}
-		log.Error().Caller().Str("func", "(*packet).encode").Err(err).Str("packet", p.String()).Msg("")
+		logger.Println("failed to encode", "func", getFuncName(), "packet", p, "error", err)
 		return err
 	}
 
 	if err := binary.Write(buf, binary.LittleEndian, p.payload); err != nil {
 		err = &PacketError{Op: "encode", Err: err}
-		log.Error().Caller().Str("func", "(*packet).encode").Err(err).Str("packet", p.String()).Msg("")
+		logger.Println("failed to encode", "func", getFuncName(), "packet", p, "error", err)
 		return err
 	}
 
 	// NOTE: payload is NULL-terminated
 	if err := binary.Write(buf, binary.LittleEndian, []byte{0x00}); err != nil {
 		err = &PacketError{Op: "encode", Err: err}
-		log.Error().Caller().Str("func", "(*packet).encode").Err(err).Str("packet", p.String()).Msg("")
+		logger.Println("failed to encode", "func", getFuncName(), "packet", p, "error", err)
 		return err
 	}
 
 	// NOTE: packet has 1-byte pad
 	if err := binary.Write(buf, binary.LittleEndian, []byte{0x00}); err != nil {
 		err = &PacketError{Op: "encode", Err: err}
-		log.Error().Caller().Str("func", "(*packet).encode").Err(err).Str("packet", p.String()).Msg("")
+		logger.Println("failed to encode", "func", getFuncName(), "packet", p, "error", err)
 		return err
 	}
 
 	if err := buf.Flush(); err != nil {
 		err = &PacketError{Op: "encode", Err: err}
-		log.Error().Caller().Str("func", "(*packet).encode").Err(err).Str("packet", p.String()).Msg("")
+		logger.Println("failed to encode", "func", getFuncName(), "packet", p, "error", err)
 		return err
 	}
 
-	log.Debug().Caller().Str("func", "(*packet).encode").Str("packet", p.String()).Msg("")
 	return nil
 }
 
@@ -135,43 +132,42 @@ func (p *packet) decode(r io.Reader) error {
 	var l int32
 	if err := binary.Read(r, binary.LittleEndian, &l); err != nil {
 		err = &PacketError{Op: "decode", Err: err}
-		log.Error().Caller().Str("func", "(*packet).decode").Err(err).Str("packet", p.String()).Msg("")
+		logger.Println("failed to decode", "func", getFuncName(), "packet", p, "error", err)
 		return err
 	}
 
 	if err := binary.Read(r, binary.LittleEndian, &p.requestId); err != nil {
 		err = &PacketError{Op: "decode", Err: err}
-		log.Error().Caller().Str("func", "(*packet).decode").Err(err).Str("packet", p.String()).Msg("")
+		logger.Println("failed to decode", "func", getFuncName(), "packet", p, "error", err)
 		return err
 	}
 
 	if err := binary.Read(r, binary.LittleEndian, &p.packetType); err != nil {
 		err = &PacketError{Op: "decode", Err: err}
-		log.Error().Caller().Str("func", "(*packet).decode").Err(err).Str("packet", p.String()).Msg("")
+		logger.Println("failed to decode", "func", getFuncName(), "packet", p, "error", err)
 		return err
 	}
 
 	p.payload = make([]byte, l-(4+4+1+1))
 	if err := binary.Read(r, binary.LittleEndian, p.payload); err != nil {
 		err = &PacketError{Op: "decode", Err: err}
-		log.Error().Caller().Str("func", "(*packet).decode").Err(err).Str("packet", p.String()).Msg("")
+		logger.Println("failed to decode", "func", getFuncName(), "packet", p, "error", err)
 		return err
 	}
 
 	// NOTE: payload is NULL-terminated
 	if err := binary.Read(r, binary.LittleEndian, make([]byte, 1)); err != nil {
 		err = &PacketError{Op: "decode", Err: err}
-		log.Error().Caller().Str("func", "(*packet).decode").Err(err).Str("packet", p.String()).Msg("")
+		logger.Println("failed to decode", "func", getFuncName(), "packet", p, "error", err)
 		return err
 	}
 
 	// NOTE: packet has 1-byte pad
 	if err := binary.Read(r, binary.LittleEndian, make([]byte, 1)); err != nil {
 		err = &PacketError{Op: "decode", Err: err}
-		log.Error().Caller().Str("func", "(*packet).decode").Err(err).Str("packet", p.String()).Msg("")
+		logger.Println("failed to decode", "func", getFuncName(), "packet", p, "error", err)
 		return err
 	}
 
-	log.Debug().Caller().Str("func", "(*packet).decode").Str("packet", p.String()).Msg("")
 	return nil
 }
