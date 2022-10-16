@@ -18,31 +18,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package rcon
+package log
 
-import (
-	"os"
-	"strings"
-	"time"
+type Logger interface {
+	Print(v ...any)
+	Printf(format string, v ...any)
+	Println(v ...any)
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-)
+	Fatal(v ...any)
+	Fatalf(format string, v ...any)
+	Fatalln(v ...any)
 
-func getLogLevel() zerolog.Level {
-	level, err := zerolog.ParseLevel(strings.ToLower(os.Getenv("LOG_LEVEL")))
-	if err != nil {
-		return zerolog.NoLevel
-	}
-
-	return level
-}
-
-func init() {
-	level := getLogLevel()
-	zerolog.SetGlobalLevel(level)
-
-	zerolog.TimeFieldFormat = time.RFC3339Nano
-
-	log.Logger = zerolog.New(os.Stderr).With().Timestamp().Str("app", "gorcon").Logger()
+	Panic(v ...any)
+	Panicf(format string, v ...any)
+	Panicln(v ...any)
 }
