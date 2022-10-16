@@ -28,6 +28,11 @@ e2e:
 .PHONY: start
 start:
 	docker run --rm -d --name minecraft -p $(RCON_PORT):$(RCON_PORT) --env-file server/.env -v ${PWD}/server/data:/data -v ${PWD}/server/mods.txt:/mods.txt itzg/minecraft-server
+	@while [ $$(docker logs minecraft | grep "Thread RCON Listener started" | wc -l) -eq 0 ]; do \
+		echo -n "\rRCON is starting up"; \
+		sleep 1; \
+	done; \
+	echo "\rRCON is started    "
 
 .PHONY: stop
 stop:
