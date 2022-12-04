@@ -57,21 +57,21 @@ func TestDialTimeout(t *testing.T) {
 			name:      "negative case: invalid addr",
 			addr:      "192.0.2.100:25576",
 			password:  "minecraft",
-			clientErr: &RconError{},
+			clientErr: &RCONError{},
 			serverErr: errors.New("timeout"),
 		},
 		{
 			name:      "negative case: invalid port",
 			addr:      "localhost:50000",
 			password:  "minecraft",
-			clientErr: &RconError{},
+			clientErr: &RCONError{},
 			serverErr: errors.New("timeout"),
 		},
 		{
 			name:      "negative case: invalid password",
 			addr:      "localhost:25576",
 			password:  "tfarcenim",
-			clientErr: &RconError{},
+			clientErr: &RCONError{},
 			serverErr: nil,
 		},
 	}
@@ -170,7 +170,7 @@ func Test_rcon_auth(t *testing.T) {
 		{
 			name:      "negative case",
 			password:  "tfarcenim",
-			clientErr: &RconError{},
+			clientErr: &RCONError{},
 			serverErr: nil,
 		},
 	}

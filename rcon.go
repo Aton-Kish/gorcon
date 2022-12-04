@@ -32,7 +32,7 @@ const (
 	maxResponseLength      = 4 + 4 + (maxResponsePayloadSize + 1) + 1
 )
 
-type Rcon interface {
+type RCON interface {
 	net.Conn
 
 	Command(command string) (string, error)
@@ -42,7 +42,7 @@ type rcon struct {
 	net.Conn
 }
 
-func Dial(addr string, password string) (Rcon, error) {
+func Dial(addr string, password string) (RCON, error) {
 	c, err := DialTimeout(addr, password, 0)
 	if err != nil {
 		return nil, err
@@ -51,10 +51,10 @@ func Dial(addr string, password string) (Rcon, error) {
 	return c, nil
 }
 
-func DialTimeout(addr string, password string, timeout time.Duration) (Rcon, error) {
+func DialTimeout(addr string, password string, timeout time.Duration) (RCON, error) {
 	conn, err := net.DialTimeout("tcp", addr, timeout)
 	if err != nil {
-		err = &RconError{Op: "dial", Err: err}
+		err = &RCONError{Op: "dial", Err: err}
 		logger.Println("failed to dial", "func", getFuncName(), "error", err)
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func DialTimeout(addr string, password string, timeout time.Duration) (Rcon, err
 	c := &rcon{conn}
 	if err := c.auth(password); err != nil {
 		defer c.Close()
-		err = &RconError{Op: "dial", Err: err}
+		err = &RCONError{Op: "dial", Err: err}
 		logger.Println("failed to dial", "func", getFuncName(), "error", err)
 		return nil, err
 	}
@@ -79,13 +79,13 @@ func (c *rcon) auth(password string) error {
 	id := rand.Int31()
 	res, err := c.request(id, authRequestType, []byte(password))
 	if err != nil {
-		err = &RconError{Op: "auth", Err: err}
+		err = &RCONError{Op: "auth", Err: err}
 		logger.Println("failed to auth", "func", getFuncName(), "error", err)
 		return err
 	}
 
 	if res.requestId != id || res.requestId == unauthorizedRequestID {
-		err = &RconError{Op: "auth"}
+		err = &RCONError{Op: "auth"}
 		logger.Println("failed to auth", "func", getFuncName(), "error", err)
 		return err
 	}
@@ -97,7 +97,7 @@ func (c *rcon) Command(command string) (string, error) {
 	id := rand.Int31()
 	res, err := c.request(id, commandRequestType, []byte(command))
 	if err != nil {
-		err = &RconError{Op: "command", Err: err}
+		err = &RCONError{Op: "command", Err: err}
 		logger.Println("failed to command", "func", getFuncName(), "error", err)
 		return "", err
 	}

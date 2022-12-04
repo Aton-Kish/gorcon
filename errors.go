@@ -24,12 +24,12 @@ import (
 	"fmt"
 )
 
-type RconError struct {
+type RCONError struct {
 	Op  string
 	Err error
 }
 
-func (e *RconError) Error() string {
+func (e *RCONError) Error() string {
 	if e == nil {
 		return "<nil>"
 	}
@@ -44,7 +44,7 @@ func (e *RconError) Error() string {
 	return fmt.Sprintf("rcon %s: %s", e.Op, err)
 }
 
-func (e *RconError) Unwrap() error {
+func (e *RCONError) Unwrap() error {
 	return e.Err
 }
 
