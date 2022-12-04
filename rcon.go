@@ -33,9 +33,7 @@ const (
 )
 
 type Rcon interface {
-	Read(b []byte) (int, error)
-	Write(b []byte) (int, error)
-	Close() error
+	net.Conn
 
 	Command(command string) (string, error)
 }
