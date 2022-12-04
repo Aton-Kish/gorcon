@@ -16,12 +16,12 @@ uninstall:
 doc:
 	godoc -http ":6060"
 
-.PHONY: unit
-unit:
+.PHONY: unittest
+unittest:
 	go test ./...
 
-.PHONY: e2e
-e2e:
+.PHONY: e2etest
+e2etest:
 	go clean -testcache
 	go test -tags e2e ./...
 

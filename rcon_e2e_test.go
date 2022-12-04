@@ -75,31 +75,31 @@ func TestDial(t *testing.T) {
 			name:        "negative case: missing address",
 			address:     "",
 			password:    cfg.Password,
-			expectedErr: &rcon.RconError{},
+			expectedErr: &rcon.RCONError{},
 		},
 		{
 			name:        "negative case: missing port",
 			address:     "localhost",
 			password:    cfg.Password,
-			expectedErr: &rcon.RconError{},
+			expectedErr: &rcon.RCONError{},
 		},
 		{
 			name:        "negative case: invalid port",
 			address:     "localhost:50000",
 			password:    cfg.Password,
-			expectedErr: &rcon.RconError{},
+			expectedErr: &rcon.RCONError{},
 		},
 		{
 			name:        "negative case: missing password",
 			address:     fmt.Sprintf("localhost:%s", cfg.Port),
 			password:    "",
-			expectedErr: &rcon.RconError{},
+			expectedErr: &rcon.RCONError{},
 		},
 		{
 			name:        "negative case: invalid password",
 			address:     fmt.Sprintf("localhost:%s", cfg.Port),
 			password:    "tfarcenim",
-			expectedErr: &rcon.RconError{},
+			expectedErr: &rcon.RCONError{},
 		},
 	}
 
@@ -120,7 +120,7 @@ func TestDial(t *testing.T) {
 	}
 }
 
-func TestRcon_Command(t *testing.T) {
+func TestRCON_Command(t *testing.T) {
 	type Case struct {
 		name        string
 		command     string
