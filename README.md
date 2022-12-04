@@ -76,7 +76,7 @@ make uninstall
 ### unit test
 
 ```shell
-make unit
+make unittest
 ```
 
 ### E2E test
@@ -90,7 +90,7 @@ make start
 make tcpdump
 
 : E2E test
-make e2e
+make e2etest
 
 : stop minecraft docker container
 make stop
